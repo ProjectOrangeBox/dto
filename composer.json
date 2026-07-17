@@ -1,13 +1,49 @@
 {
-    "name": "orange/request",
-    "description": "Orange request package",
-    "type": "library",
-    "autoload": {
-        "psr-4": {
-            "orange\\request\\": "src/"
-        }
-    },
-    "require": {
-        "php": ">=8.3"
+  "name": "orange/request",
+  "description": "Attribute-driven request input validation and filtering for PHP 8.3+",
+  "type": "library",
+  "keywords": [
+    "request",
+    "validation",
+    "filter",
+    "attributes",
+    "input"
+  ],
+  "homepage": "https://github.com/ProjectOrangeBox/request",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Don Myers",
+      "email": "donmyers@me.com"
     }
+  ],
+  "support": {
+    "issues": "https://github.com/ProjectOrangeBox/request/issues",
+    "source": "https://github.com/ProjectOrangeBox/request"
+  },
+  "require": {
+    "php": ">=8.3",
+    "ext-filter": "*",
+    "ext-json": "*",
+    "ext-mbstring": "*"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "^10.5 || ^11.0"
+  },
+  "autoload": {
+    "psr-4": {
+      "orange\\request\\": "src/"
+    }
+  },
+  "scripts": {
+    "test": "phpunit",
+    "test-coverage": "phpunit --coverage-text"
+  },
+  "scripts-descriptions": {
+    "test": "Run the PHPUnit test suite",
+    "test-coverage": "Run the test suite with a text coverage report (requires Xdebug or PCOV)"
+  },
+  "config": {
+    "sort-packages": true
+  }
 }

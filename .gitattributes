@@ -1,0 +1,5 @@
+# Keep development-only files out of the distributed package (composer dist archives).
+/.gitattributes    export-ignore
+/phpunit.xml.dist  export-ignore
+/unittests/        export-ignore
+/sample/           export-ignore

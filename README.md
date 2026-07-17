@@ -1,43 +1,32 @@
 # orange/request
 
-## WORK IN PROGRESS
+`orange/request` is a small, dependency-free PHP 8.3+ package for describing and
+validating request input using PHP attributes.
 
-`orange/request` is a small PHP 8.3+ package for describing request input with PHP attributes.
+You declare a request class that extends `orange\request\Request`, annotate each
+public property with attributes, and the package will:
 
-You create a request class that extends `orange\request\Request`, add attributes to each public property, and the package will:
+- read each value from the incoming input array (by field name)
+- validate every value against the rules you declared
+- filter / cast values (trim, lower-case, cast to int, etc.)
+- expose the valid data as typed properties and as array / column / table shapes
+- collect human-readable error messages for anything that failed
 
-- read incoming input by field name
-- validate each field
-- optionally cast/filter values
-- expose valid data as typed properties
-- build array output for plain use or database-style mapping
+> **Status:** work in progress. The public API described here is stable and
+> covered by tests, but new attributes are still being added.
 
-## How It Works
+## Requirements
 
-Each property on your request object can declare attributes such as:
+- PHP `>= 8.3`
+- Extensions: `ext-filter`, `ext-json`, `ext-mbstring` (declared in `composer.json`)
 
-- `#[FieldName('clr')]` to read from a different input key
-- `#[Label('Favorite Color')]` to control validation messages
-- `#[Column('fav_color')]` to map the property to a database column name
-- `#[Table('user')]` to group fields under a table name
-- validation attributes like `#[IsRequired]`, `#[MinLength(...)]`, `#[MaxLength(...)]`, `#[GreaterThan(...)]`, and `#[LessThan(...)]`
-- filter attributes like `#[ToString]` and `#[ToInteger]`
+## Installation
 
-When the request is constructed, it reflects on the class, discovers those attributes, and processes each property against the provided input array.
+```sh
+composer require orange/request
+```
 
-## Available Output
-
-After a request is processed, valid data can be read in a few ways:
-
-- typed properties such as `$request->name`
-- `$request->asArray()` for a simple associative array keyed by property name
-- `$request->asColumns()` for a flat column-value map
-- `$request->asTable()` for table-grouped output
-- `$request->errors()` for validation messages
-
-Validation status is available through `$request->isValid()`.
-
-## Example
+## Quick Start
 
 ```php
 <?php
@@ -53,122 +42,305 @@ use orange\request\attributes\Label;
 use orange\request\attributes\Table;
 use orange\request\attributes\filters\ToInteger;
 use orange\request\attributes\filters\ToString;
-use orange\request\attributes\validations\GreaterThan;
+use orange\request\attributes\filters\Trim;
+use orange\request\attributes\validations\Between;
 use orange\request\attributes\validations\IsRequired;
-use orange\request\attributes\validations\LessThan;
 use orange\request\attributes\validations\MaxLength;
 use orange\request\attributes\validations\MinLength;
 
 class UserRequest extends Request
 {
+    #[Trim]
+    #[ToString]
     #[IsRequired]
-    #[MaxLength(64)]
     #[MinLength(1)]
+    #[MaxLength(64)]
     #[Column('name')]
     #[Table('user')]
-    #[ToString]
     #[Label('Name')]
     public string $name;
 
-    #[IsRequired]
     #[ToInteger]
-    #[GreaterThan(18)]
-    #[LessThan(110)]
+    #[IsRequired]
+    #[Between(18, 110)]
     #[Column('age')]
     #[Table('user')]
     #[Label('Age')]
     public int $age;
 
-    #[IsRequired]
-    #[MaxLength(16)]
-    #[MinLength(4)]
-    #[Column('fav_color')]
-    #[Table('user')]
-    #[FieldName('clr')]
+    #[Trim]
     #[ToString]
+    #[IsRequired]
+    #[MinLength(4)]
+    #[MaxLength(16)]
+    #[FieldName('clr')]     // read from input key "clr"
+    #[Column('fav_color')]  // store as column "fav_color"
+    #[Table('user')]
     #[Label('Favorite Color')]
     public string $color;
 }
 
-$input = [
+$request = new UserRequest([
     'name' => 'Johnny Appleseed',
-    'age' => 23,
-    'clr' => 'Orange',
-];
-
-$request = new UserRequest($input);
+    'age'  => '23',
+    'clr'  => 'Orange',
+]);
 
 if ($request->isValid()) {
-    var_dump($request->name);
-    var_dump($request->age);
-    var_dump($request->color);
-
-    var_dump($request->asArray());
-    var_dump($request->asColumns());
-    var_dump($request->asTable());
+    echo $request->name;            // "Johnny Appleseed"
+    echo $request->age;             // 23 (int)
+    print_r($request->asColumns()); // ['name' => ..., 'age' => 23, 'fav_color' => 'Orange']
 } else {
-    var_dump($request->errors());
+    print_r($request->errors());
 }
 ```
 
-## Example Output Shapes
+## How It Works
 
-`asArray()`:
+When you construct a request, it uses reflection to find every public property
+that carries one or more `orange\request` attributes. For each such property it:
+
+1. resolves the **field name** (input key), **column**, **table**, and **label**
+   from the metadata attributes (falling back to the property name);
+2. reads the raw value from the input array using the field name;
+3. walks the attributes **in declaration order**, calling each rule's `validate()`
+   and/or `filter()` method against the current value;
+4. if every validation passed, assigns the (possibly filtered) value to the typed
+   property and records it in the array / column / table outputs. If anything
+   failed, the messages are collected under the field name instead.
+
+Properties with no `orange\request` attributes are ignored entirely.
+
+### Attribute order matters
+
+Validations and filters run in a **single pass in declaration order**, and a
+filter changes the value seen by later attributes. Declare value-shaping filters
+(`Trim`, `ToInteger`, `ToLower`, …) **before** the validations that depend on
+them:
 
 ```php
-[
-    'name' => 'Johnny Appleseed',
-    'age' => 23,
-    'color' => 'Orange',
-]
+#[Trim]          // "  9 " -> "9"
+#[ToInteger]     // "9"    -> 9
+#[Between(1, 10)] // validates 9
+public int $qty;
 ```
 
-`asColumns()`:
+## Reading Results
+
+| Method | Returns |
+| --- | --- |
+| `isValid(): bool` | `true` when there are no errors |
+| `errors(): array` | `['fieldName' => ['message', ...], ...]` |
+| `asArray(): array` | valid values keyed by **property name** |
+| `asColumns(): array` | valid values keyed by **column name** |
+| `asTable(false\|string $table = false): array` | valid values grouped by **table** (all tables, or one named table) |
+| `input(?string $key = null, mixed $default = ''): mixed` | the raw, unprocessed input (whole array, or one key) |
+
+`asTable('name')` throws `\Exception` if the requested table does not exist.
+
+### Inspecting which fields passed / failed
+
+| Method | Returns |
+| --- | --- |
+| `validKeys(bool $raw = true): array` | keys of fields that passed |
+| `invalidKeys(bool $raw = true): array` | keys of fields that failed |
+| `validInputKeys(): array` | passed fields, as resolved input field names |
+| `invalidInputKeys(): array` | failed fields, as resolved input field names |
+
+By default (`$raw = true`) these return the **raw property names**. Pass `false`
+— or use the `*InputKeys()` wrappers — to get the resolved input field names (the
+remapped `FieldName` values). For the `color`/`clr` property above:
 
 ```php
-[
-    'name' => 'Johnny Appleseed',
-    'age' => 23,
-    'fav_color' => 'Orange',
-]
+$request->validKeys();       // ['name', 'age', 'color']  (property names)
+$request->validInputKeys();  // ['name', 'age', 'clr']    (input field names)
 ```
 
-`asTable()`:
+### Resolving a property's metadata
 
 ```php
-[
-    'user' => [
-        'name' => 'Johnny Appleseed',
-        'age' => 23,
-        'fav_color' => 'Orange',
-    ],
-]
+$request->fieldName('color'); // 'clr'
+$request->column('color');    // 'fav_color'
+$request->table('color');     // 'user'
+$request->label('color');     // 'Favorite Color'
 ```
 
-## Included Attributes
+Each falls back to the property name when the corresponding attribute is absent.
 
-Metadata:
+## Output Shapes
 
-- `Column`
-- `FieldName`
-- `Label`
-- `Table`
+Given the `UserRequest` above with valid input:
 
-Filters:
+```php
+$request->asArray();
+// ['name' => 'Johnny Appleseed', 'age' => 23, 'color' => 'Orange']
 
-- `ToInteger`
-- `ToString`
+$request->asColumns();
+// ['name' => 'Johnny Appleseed', 'age' => 23, 'fav_color' => 'Orange']
 
-Validations:
+$request->asTable();
+// ['user' => ['name' => 'Johnny Appleseed', 'age' => 23, 'fav_color' => 'Orange']]
 
-- `GreaterThan`
-- `IsRequired`
-- `LessThan`
-- `MaxLength`
-- `MinLength`
+$request->asTable('user');
+// ['name' => 'Johnny Appleseed', 'age' => 23, 'fav_color' => 'Orange']
+```
 
-## Notes
+## Metadata Attributes
 
-- The package requires PHP `>=8.3`.
-- Property names are used as defaults when `FieldName`, `Column`, or `Table` are not provided.
-- Only fields that pass validation are assigned to the request object and included in array/table output.
+| Attribute | Purpose |
+| --- | --- |
+| `#[FieldName('key')]` | input array key to read from (defaults to property name) |
+| `#[Column('col')]` | column name used by `asColumns()` / `asTable()` (defaults to property name) |
+| `#[Table('name', 'database')]` | table to group under in `asTable()`; optional database identifier |
+| `#[Label('Human Name')]` | name used in error messages (defaults to property name) |
+
+## Filter Attributes
+
+Filters transform the value and never fail.
+
+| Attribute | Effect |
+| --- | --- |
+| `#[Trim]` | strips surrounding whitespace |
+| `#[CollapseSpaces]` | collapses internal whitespace runs to single spaces and trims |
+| `#[StripTags]` | removes HTML/PHP tags |
+| `#[ToLower]` / `#[ToUpper]` | multibyte case conversion |
+| `#[StrLimit(int $length)]` | truncates a string to `$length` characters |
+| `#[ToBoolean]` | `true`/`"true"`/`"yes"`/non-zero int → `true`; everything else → `false` |
+| `#[ToInteger]` | casts to `int` |
+| `#[ToFloat]` | casts to `float` |
+| `#[ToString]` | casts to `string` |
+| `#[NullIfEmpty]` | converts an empty string `''` to `null` (leaves `'0'` / `0` alone) |
+| `#[DefaultTo(mixed $default = null)]` | substitutes `$default` when the value is `null` or `''` |
+
+## Validation Attributes
+
+Every validation attribute also accepts an optional custom message as its **last**
+constructor argument (see [Custom error messages](#custom-error-messages)).
+
+### Character / string content
+
+| Attribute | Passes when the value… |
+| --- | --- |
+| `#[Alpha]` | contains only letters |
+| `#[AlphaDash]` | contains only letters and dashes |
+| `#[AlphaNumeric]` | contains only letters and digits |
+| `#[AlphaNumericSpaces]` | contains only letters, digits, and spaces |
+| `#[Slug]` | is a lower-case, hyphen-separated slug (`my-post-1`) |
+| `#[StartsWith(string $needle)]` | starts with `$needle` |
+| `#[EndsWith(string $needle)]` | ends with `$needle` |
+| `#[Contains(string $needle)]` | contains `$needle` |
+| `#[RegexMatch(string $pattern)]` | matches the PCRE `$pattern` |
+
+### Numbers
+
+| Attribute | Passes when the value… |
+| --- | --- |
+| `#[Numeric]` | is numeric |
+| `#[Integer]` | is an integer |
+| `#[Decimal]` | is a decimal number (has a fractional part) |
+| `#[IsNatural]` | is a natural number (`0` and up) |
+| `#[IsNaturalNoZero]` | is a natural number greater than zero |
+| `#[GreaterThan(int $value)]` | is greater than `$value` |
+| `#[GreaterThanEqualTo(int $value)]` | is greater than or equal to `$value` |
+| `#[LessThan(int $value)]` | is less than `$value` |
+| `#[LessThanEqualTo(int $value)]` | is less than or equal to `$value` |
+| `#[Between(int\|float $min, int\|float $max)]` | is within `[min, max]` (inclusive) |
+
+### Length
+
+| Attribute | Passes when the string length… |
+| --- | --- |
+| `#[ExactLength(int $length)]` | equals `$length` |
+| `#[MaxLength(int $length)]` | is **strictly less than** `$length` |
+| `#[MinLength(int $length)]` | is **strictly greater than** `$length` |
+| `#[BetweenLength(int $min, int $max)]` | is within `[min, max]` (inclusive) |
+
+> Note: `MaxLength` and `MinLength` are strict (`<` and `>`), matching their
+> messages ("must be less/greater than N characters"). Use `BetweenLength` or
+> `ExactLength` when you need inclusive bounds.
+
+### Presence & comparison
+
+| Attribute | Passes when… |
+| --- | --- |
+| `#[IsRequired]` | the value is not empty |
+| `#[Matches(string $field)]` | the value equals another field's input value |
+| `#[Differs(string $field)]` | the value differs from another field's input value |
+| `#[RequiredIf(string $field, string $value)]` | present, but only required when `$field` equals `$value` |
+| `#[RequiredWith(string $field)]` | present, but only required when `$field` is non-empty |
+| `#[InList(array $values)]` | is one of `$values` |
+| `#[NotInList(array $values)]` | is none of `$values` |
+
+### Formats
+
+| Attribute | Passes when the value is… |
+| --- | --- |
+| `#[ValidEmail]` | a valid email address |
+| `#[ValidEmails]` | a comma-separated list of valid email addresses |
+| `#[ValidUrl]` | a valid URL |
+| `#[ValidHostname]` | a valid hostname |
+| `#[ValidIp(string $version = '')]` | a valid IP (`''` = any, `'ipv4'`, or `'ipv6'`) |
+| `#[ValidDate]` | a date string parseable by `strtotime()` |
+| `#[DateFormat(string $format = 'Y-m-d')]` | an exact match for the given date `$format` |
+| `#[ValidTimezone]` | a valid PHP timezone identifier |
+| `#[ValidJson]` | a well-formed JSON string |
+| `#[ValidUuid]` | a valid RFC 4122 UUID (versions 1–8) |
+| `#[ValidBase64]` | a valid base64 string |
+| `#[ValidHexColor]` | a 3- or 6-digit hex color, with optional leading `#` |
+| `#[ValidCreditCard]` | a 13–19 digit number passing the Luhn checksum |
+
+## Custom Error Messages
+
+Every validation attribute accepts a custom message string. It is passed through `sprintf()`
+with the label as the first argument, followed by any rule-specific values, so you
+can use `%s` placeholders (or none at all):
+
+```php
+#[IsRequired('You must provide a name.')]
+public string $name;
+
+#[MinLength(8, '%s must be at least %s characters long.')]
+public string $password;   // -> "Password must be at least 8 characters long."
+```
+
+The rule-specific values match what appears in the default message (for
+`MinLength` that is the length; for `Between` the min then max, etc.). Use `%%` to
+output a literal percent sign.
+
+## Notes & Gotchas
+
+- **Only valid fields appear in output.** A field that fails validation is not
+  assigned to its typed property (reading it throws an "uninitialized" error) and
+  is excluded from `asArray()` / `asColumns()` / `asTable()`.
+- **Typed properties must match filtered values.** If a property is typed `int`,
+  make sure a cast filter such as `#[ToInteger]` runs, otherwise assigning a
+  string will raise a `TypeError`.
+- **Every valid field is mapped into every output.** A field with no `#[Table]` /
+  `#[Column]` still appears in `asTable()` / `asColumns()` under its property name.
+  Filter such fields (e.g. a password confirmation) out downstream.
+- **Format validators always run.** There is no "sometimes" concept — a format
+  validator like `#[ValidEmail]` will fail on an empty value even alongside
+  `#[RequiredIf]`. Pair conditional rules with presence-only checks.
+
+## Samples
+
+The `sample/` directory contains runnable request classes covering the full
+attribute set — sign-up, CMS article, payment, API settings, and conditional
+contact preferences. Run them all against valid and invalid input:
+
+```sh
+php sample/run.php
+```
+
+## Testing
+
+The package ships a PHPUnit suite under `unittests/` with a `phpunit.xml.dist`:
+
+```sh
+composer test            # run the suite
+composer test-coverage   # run with a text coverage report (needs Xdebug or PCOV)
+```
+
+## License
+
+MIT. See [LICENSE](LICENSE).

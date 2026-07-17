@@ -13,32 +13,32 @@ use orange\request\RequestAttribute;
  */
 class InList extends RequestAttribute
 {
-    protected string $errorMsg = '%s must be one of the allowed values';
+  protected string $errorMsg = '%s must be one of the allowed values';
 
-    /**
-     * Stores the allowed values and optional custom message.
-     */
-    public function __construct(private array $values, protected string $message = '') {}
+  /**
+   * Stores the allowed values and optional custom message.
+   */
+  public function __construct(private array $values, protected string $message = '') {}
 
-    /**
-     * Checks whether the input is present in the configured list.
-     */
-    public function validate(mixed $input): bool
-    {
-        $bool = false;
+  /**
+   * Checks whether the input is present in the configured list.
+   */
+  public function validate(mixed $input): bool
+  {
+    $bool = false;
 
-        if (is_scalar($input)) {
-            $bool = in_array((string)$input, array_map('strval', $this->values), true);
-        }
-
-        return $bool;
+    if (is_scalar($input)) {
+      $bool = in_array((string)$input, array_map('strval', $this->values), true);
     }
 
-    /**
-     * Returns the configured allowed values.
-     */
-    public function getValues(): array
-    {
-        return $this->values;
-    }
+    return $bool;
+  }
+
+  /**
+   * Returns the configured allowed values.
+   */
+  public function getValues(): array
+  {
+    return $this->values;
+  }
 }

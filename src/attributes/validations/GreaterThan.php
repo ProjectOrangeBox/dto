@@ -27,10 +27,8 @@ class GreaterThan extends RequestAttribute
     {
         $bool = false;
 
-        if (is_int($input)) {
-            var_dump($input);
-
-            $bool = $input > $this->length;
+        if (is_numeric($input)) {
+            $bool = (float)$input > $this->length;
         }
 
         return $bool;

@@ -27,8 +27,8 @@ class LessThan extends RequestAttribute
     {
         $bool = false;
 
-        if (is_int($input)) {
-            $bool = $input < $this->length;
+        if (is_numeric($input)) {
+            $bool = (float)$input < $this->length;
         }
 
         return $bool;
