@@ -20,6 +20,6 @@ class IsRequired extends RequestAttribute
      */
     public function validate(mixed $input): bool
     {
-        return !empty($input);
+        return $this->isFilled($input);
     }
 }

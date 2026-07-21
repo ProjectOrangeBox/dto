@@ -175,7 +175,7 @@ final class RequestTest extends UnitTestHelper
     {
         $request = new ProfileRequest($this->validProfileInput());
 
-        $this->expectException(\Exception::class);
+        $this->expectException(\OutOfBoundsException::class);
         $this->expectExceptionMessage('Table missing not found.');
 
         $request->asTable('missing');
@@ -303,16 +303,6 @@ final class RequestTest extends UnitTestHelper
 
         $this->assertFalse($missing->isValid());
         $this->assertArrayHasKey('field', $missing->errors());
-    }
-
-    public function testGetClassStripsNamespaceWithAndWithoutSeparator(): void
-    {
-        $request = new MinimalRequest(['token' => 'x']);
-
-        // Fully-qualified name: everything after the last separator is returned.
-        $this->assertSame('Bar', $this->callMethod('getClass', ['App\\Ns\\Bar'], $request));
-        // Bare name with no separator: returned unchanged.
-        $this->assertSame('Foo', $this->callMethod('getClass', ['Foo'], $request));
     }
 
     public function testMetadataAccessorsResolveConfiguredValues(): void

@@ -18,7 +18,10 @@ class BetweenLength extends RequestAttribute
     /**
      * Stores the inclusive length bounds and optional custom message.
      */
-    public function __construct(private int $min, private int $max, protected string $message = '') {}
+    public function __construct(private int $min, private int $max, string $message = '')
+    {
+        parent::__construct($message);
+    }
 
     /**
      * Checks whether the input length is between the configured minimum and maximum.

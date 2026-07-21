@@ -19,7 +19,10 @@ class DateFormat extends RequestAttribute
     /**
      * Stores the required date format and optional custom message.
      */
-    public function __construct(private string $format = 'Y-m-d', protected string $message = '') {}
+    public function __construct(private string $format = 'Y-m-d', string $message = '')
+    {
+        parent::__construct($message);
+    }
 
     /**
      * Checks whether the input parses to a real date and round-trips to the same string.

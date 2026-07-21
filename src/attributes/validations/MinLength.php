@@ -18,7 +18,10 @@ class MinLength extends RequestAttribute
     /**
      * Stores the minimum length and optional custom message.
      */
-    public function __construct(private int $length, protected string $message = '') {}
+    public function __construct(private int $length, string $message = '')
+    {
+        parent::__construct($message);
+    }
 
     /**
      * Checks whether the input string length is above the configured minimum.

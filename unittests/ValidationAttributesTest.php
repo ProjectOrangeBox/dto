@@ -3,10 +3,15 @@
 declare(strict_types=1);
 
 use orange\request\Request;
+use orange\request\attributes\validations\Accepted;
+use orange\request\attributes\validations\After;
+use orange\request\attributes\validations\AfterField;
 use orange\request\attributes\validations\Alpha;
 use orange\request\attributes\validations\AlphaDash;
 use orange\request\attributes\validations\AlphaNumeric;
 use orange\request\attributes\validations\AlphaNumericSpaces;
+use orange\request\attributes\validations\Before;
+use orange\request\attributes\validations\BeforeField;
 use orange\request\attributes\validations\Between;
 use orange\request\attributes\validations\BetweenLength;
 use orange\request\attributes\validations\Contains;
@@ -14,6 +19,7 @@ use orange\request\attributes\validations\DateFormat;
 use orange\request\attributes\validations\Decimal;
 use orange\request\attributes\validations\Differs;
 use orange\request\attributes\validations\EndsWith;
+use orange\request\attributes\validations\Equals;
 use orange\request\attributes\validations\ExactLength;
 use orange\request\attributes\validations\GreaterThan;
 use orange\request\attributes\validations\GreaterThanEqualTo;
@@ -27,6 +33,8 @@ use orange\request\attributes\validations\LessThanEqualTo;
 use orange\request\attributes\validations\Matches;
 use orange\request\attributes\validations\MaxLength;
 use orange\request\attributes\validations\MinLength;
+use orange\request\attributes\validations\MultipleOf;
+use orange\request\attributes\validations\NotEquals;
 use orange\request\attributes\validations\NotInList;
 use orange\request\attributes\validations\Numeric;
 use orange\request\attributes\validations\RegexMatch;
@@ -35,7 +43,9 @@ use orange\request\attributes\validations\RequiredWith;
 use orange\request\attributes\validations\Slug;
 use orange\request\attributes\validations\StartsWith;
 use orange\request\attributes\validations\ValidBase64;
+use orange\request\attributes\validations\ValidCountryCode;
 use orange\request\attributes\validations\ValidCreditCard;
+use orange\request\attributes\validations\ValidCurrencyCode;
 use orange\request\attributes\validations\ValidDate;
 use orange\request\attributes\validations\ValidEmail;
 use orange\request\attributes\validations\ValidEmails;
@@ -43,6 +53,7 @@ use orange\request\attributes\validations\ValidHexColor;
 use orange\request\attributes\validations\ValidHostname;
 use orange\request\attributes\validations\ValidIp;
 use orange\request\attributes\validations\ValidJson;
+use orange\request\attributes\validations\ValidPhoneNumber;
 use orange\request\attributes\validations\ValidTimezone;
 use orange\request\attributes\validations\ValidUrl;
 use orange\request\attributes\validations\ValidUuid;
@@ -143,6 +154,18 @@ final class ValidationAttributesTest extends UnitTestHelper
         $this->assertEquals('Count must be greater than 10', $rule->getMessage('Count'));
     }
 
+    public function testGreaterThanAcceptsFloatThreshold(): void
+    {
+        $rule = new GreaterThan(19.99);
+
+        $this->assertTrue($rule->validate(20));
+        $this->assertTrue($rule->validate('19.995'));
+        $this->assertFalse($rule->validate(19.99));
+        $this->assertFalse($rule->validate('19.98'));
+        $this->assertEquals(19.99, $rule->getValue());
+        $this->assertEquals('This field must be greater than 19.99', $rule->getMessage());
+    }
+
     public function testGreaterThanEqualTo(): void
     {
         $rule = new GreaterThanEqualTo(10);
@@ -203,7 +226,12 @@ final class ValidationAttributesTest extends UnitTestHelper
         $rule = new IsRequired();
 
         $this->assertTrue($rule->validate('filled'));
+        // '0' and 0 are meaningful values, not "empty" (unlike PHP's empty()).
+        $this->assertTrue($rule->validate('0'));
+        $this->assertTrue($rule->validate(0));
         $this->assertFalse($rule->validate(''));
+        $this->assertFalse($rule->validate(null));
+        $this->assertFalse($rule->validate([]));
         $this->assertEquals('This field is required', $rule->getMessage());
         $this->assertEquals('Name is required', $rule->getMessage('Name'));
     }
@@ -219,6 +247,17 @@ final class ValidationAttributesTest extends UnitTestHelper
         $this->assertEquals(10, $rule->getValue());
         $this->assertEquals('This field must be less than 10', $rule->getMessage());
         $this->assertEquals('Count must be less than 10', $rule->getMessage('Count'));
+    }
+
+    public function testLessThanAcceptsFloatThreshold(): void
+    {
+        $rule = new LessThan(0.5);
+
+        $this->assertTrue($rule->validate(0.49));
+        $this->assertFalse($rule->validate(0.5));
+        $this->assertFalse($rule->validate(0.51));
+        $this->assertEquals(0.5, $rule->getValue());
+        $this->assertEquals('This field must be less than 0.5', $rule->getMessage());
     }
 
     public function testLessThanEqualTo(): void
@@ -477,6 +516,8 @@ final class ValidationAttributesTest extends UnitTestHelper
 
         // The trigger value is present, so the field is required.
         $this->assertTrue($rule->validate('filled'));
+        // '0' is a meaningful value, not "empty".
+        $this->assertTrue($rule->validate('0'));
         $this->assertFalse($rule->validate(''));
         $this->assertEquals('type', $rule->getField());
         $this->assertEquals('other', $rule->getValue());
@@ -495,6 +536,8 @@ final class ValidationAttributesTest extends UnitTestHelper
 
         // The companion field has a value, so this field is required.
         $this->assertTrue($rule->validate('123 Main St'));
+        // '0' is a meaningful value, not "empty".
+        $this->assertTrue($rule->validate('0'));
         $this->assertFalse($rule->validate(''));
         $this->assertEquals('shipping', $rule->getField());
         $this->assertEquals('This field is required', $rule->getMessage());
@@ -503,6 +546,11 @@ final class ValidationAttributesTest extends UnitTestHelper
         $optional = new RequiredWith('shipping');
         $optional->request($this->makeRequest(['shipping' => '']));
         $this->assertTrue($optional->validate(''));
+
+        // A companion field whose value is '0' still counts as "has a value".
+        $zeroTriggers = new RequiredWith('shipping');
+        $zeroTriggers->request($this->makeRequest(['shipping' => '0']));
+        $this->assertFalse($zeroTriggers->validate(''));
     }
 
     public function testValidCreditCard(): void
@@ -575,16 +623,22 @@ final class ValidationAttributesTest extends UnitTestHelper
     public function testNonScalarInputIsRejectedByGuardedValidators(): void
     {
         $rules = [
+            new Accepted(),
+            new After('now'),
+            new AfterField('other'),
             new Alpha(),
             new AlphaDash(),
             new AlphaNumeric(),
             new AlphaNumericSpaces(),
+            new Before('now'),
+            new BeforeField('other'),
             new Between(1, 10),
             new BetweenLength(1, 10),
             new Contains('a'),
             new DateFormat('Y-m-d'),
             new Decimal(),
             new EndsWith('a'),
+            new Equals('a'),
             new ExactLength(5),
             new GreaterThan(10),
             new GreaterThanEqualTo(10),
@@ -596,13 +650,17 @@ final class ValidationAttributesTest extends UnitTestHelper
             new LessThanEqualTo(10),
             new MaxLength(6),
             new MinLength(3),
+            new MultipleOf(5),
+            new NotEquals('a'),
             new NotInList(['a', 'b']),
             new Numeric(),
             new RegexMatch('/^[a-z]+$/'),
             new Slug(),
             new StartsWith('a'),
             new ValidBase64(),
+            new ValidCountryCode(),
             new ValidCreditCard(),
+            new ValidCurrencyCode(),
             new ValidDate(),
             new ValidEmail(),
             new ValidEmails(),
@@ -610,6 +668,7 @@ final class ValidationAttributesTest extends UnitTestHelper
             new ValidHostname(),
             new ValidIp(),
             new ValidJson(),
+            new ValidPhoneNumber(),
             new ValidTimezone(),
             new ValidUrl(),
             new ValidUuid(),
@@ -636,5 +695,164 @@ final class ValidationAttributesTest extends UnitTestHelper
 
         $this->assertFalse($rule->validate('999.999.999.999'));
         $this->assertEquals('', $rule->getVersion());
+    }
+
+    public function testEquals(): void
+    {
+        $rule = new Equals('draft');
+
+        $this->assertTrue($rule->validate('draft'));
+        // Compared as strings, so the int 5 matches the string '5'.
+        $intRule = new Equals(5);
+        $this->assertTrue($intRule->validate('5'));
+        $this->assertFalse($rule->validate('published'));
+        $this->assertEquals('draft', $rule->getValue());
+        $this->assertEquals('This field must equal draft', $rule->getMessage());
+        $this->assertEquals('Status must equal draft', $rule->getMessage('Status'));
+    }
+
+    public function testNotEquals(): void
+    {
+        $rule = new NotEquals('admin');
+
+        $this->assertTrue($rule->validate('editor'));
+        $this->assertFalse($rule->validate('admin'));
+        $this->assertEquals('admin', $rule->getValue());
+        $this->assertEquals('This field must not equal admin', $rule->getMessage());
+        $this->assertEquals('Username must not equal admin', $rule->getMessage('Username'));
+    }
+
+    public function testAccepted(): void
+    {
+        $rule = new Accepted();
+
+        $this->assertTrue($rule->validate(true));
+        $this->assertTrue($rule->validate(1));
+        $this->assertTrue($rule->validate('1'));
+        $this->assertTrue($rule->validate('yes'));
+        $this->assertTrue($rule->validate('on'));
+        $this->assertTrue($rule->validate('TRUE'));
+        $this->assertFalse($rule->validate(false));
+        $this->assertFalse($rule->validate(0));
+        $this->assertFalse($rule->validate('no'));
+        $this->assertFalse($rule->validate(''));
+        $this->assertEquals('This field must be accepted', $rule->getMessage());
+        $this->assertEquals('Terms must be accepted', $rule->getMessage('Terms'));
+    }
+
+    public function testMultipleOf(): void
+    {
+        $rule = new MultipleOf(5);
+
+        $this->assertTrue($rule->validate(10));
+        $this->assertTrue($rule->validate('15'));
+        $this->assertTrue($rule->validate(0));
+        $this->assertFalse($rule->validate(12));
+        $this->assertFalse($rule->validate('abc'));
+
+        // Float steps tolerate normal floating point rounding error.
+        $floatRule = new MultipleOf(0.1);
+        $this->assertTrue($floatRule->validate(0.3));
+
+        $this->assertEquals(5, $rule->getStep());
+        $this->assertEquals('This field must be a multiple of 5', $rule->getMessage());
+        $this->assertEquals('Quantity must be a multiple of 5', $rule->getMessage('Quantity'));
+    }
+
+    public function testBefore(): void
+    {
+        $rule = new Before('2030-01-01');
+
+        $this->assertTrue($rule->validate('2029-12-31'));
+        $this->assertFalse($rule->validate('2030-01-01'));
+        $this->assertFalse($rule->validate('2030-06-15'));
+        $this->assertFalse($rule->validate('not a date'));
+        $this->assertEquals('2030-01-01', $rule->getDate());
+        $this->assertEquals('This field must be before 2030-01-01', $rule->getMessage());
+
+        // 'now' is resolved dynamically via strtotime().
+        $pastRule = new Before('now');
+        $this->assertTrue($pastRule->validate('2000-01-01'));
+        $this->assertFalse($pastRule->validate('2999-01-01'));
+    }
+
+    public function testAfter(): void
+    {
+        $rule = new After('2000-01-01');
+
+        $this->assertTrue($rule->validate('2000-01-02'));
+        $this->assertFalse($rule->validate('2000-01-01'));
+        $this->assertFalse($rule->validate('1999-12-31'));
+        $this->assertFalse($rule->validate('not a date'));
+        $this->assertEquals('2000-01-01', $rule->getDate());
+        $this->assertEquals('This field must be after 2000-01-01', $rule->getMessage());
+
+        $futureRule = new After('now');
+        $this->assertTrue($futureRule->validate('2999-01-01'));
+        $this->assertFalse($futureRule->validate('2000-01-01'));
+    }
+
+    public function testBeforeField(): void
+    {
+        $rule = new BeforeField('end_date');
+        $rule->request($this->makeRequest(['end_date' => '2026-12-31']));
+
+        $this->assertTrue($rule->validate('2026-01-01'));
+        $this->assertFalse($rule->validate('2026-12-31'));
+        $this->assertFalse($rule->validate('2027-01-01'));
+        $this->assertEquals('end_date', $rule->getField());
+        $this->assertEquals('This field must be before end_date', $rule->getMessage());
+        $this->assertEquals('Start Date must be before end_date', $rule->getMessage('Start Date'));
+    }
+
+    public function testAfterField(): void
+    {
+        $rule = new AfterField('start_date');
+        $rule->request($this->makeRequest(['start_date' => '2026-01-01']));
+
+        $this->assertTrue($rule->validate('2026-12-31'));
+        $this->assertFalse($rule->validate('2026-01-01'));
+        $this->assertFalse($rule->validate('2025-01-01'));
+        $this->assertEquals('start_date', $rule->getField());
+        $this->assertEquals('This field must be after start_date', $rule->getMessage());
+        $this->assertEquals('End Date must be after start_date', $rule->getMessage('End Date'));
+    }
+
+    public function testValidPhoneNumber(): void
+    {
+        $rule = new ValidPhoneNumber();
+
+        $this->assertTrue($rule->validate('+1 555-123-4567'));
+        $this->assertTrue($rule->validate('(555) 123-4567'));
+        $this->assertTrue($rule->validate('5551234567'));
+        $this->assertFalse($rule->validate('123'));
+        $this->assertFalse($rule->validate('abc'));
+        $this->assertFalse($rule->validate(''));
+        $this->assertEquals('This field must contain a valid phone number', $rule->getMessage());
+        $this->assertEquals('Phone must contain a valid phone number', $rule->getMessage('Phone'));
+    }
+
+    public function testValidCountryCode(): void
+    {
+        $rule = new ValidCountryCode();
+
+        $this->assertTrue($rule->validate('US'));
+        $this->assertTrue($rule->validate('gb'));
+        $this->assertFalse($rule->validate('ZZ'));
+        $this->assertFalse($rule->validate(''));
+        $this->assertEquals('This field must be a valid country code', $rule->getMessage());
+        $this->assertEquals('Country must be a valid country code', $rule->getMessage('Country'));
+    }
+
+    public function testValidCurrencyCode(): void
+    {
+        $rule = new ValidCurrencyCode();
+
+        $this->assertTrue($rule->validate('USD'));
+        $this->assertTrue($rule->validate('eur'));
+        $this->assertFalse($rule->validate('ZZZ'));
+        $this->assertFalse($rule->validate(''));
+        $this->assertEquals('This field must be a valid currency code', $rule->getMessage());
+        $this->assertEquals('Currency must be a valid currency code', $rule->getMessage('Currency'));
     }
 }

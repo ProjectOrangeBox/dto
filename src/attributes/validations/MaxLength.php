@@ -18,7 +18,10 @@ class MaxLength extends RequestAttribute
     /**
      * Stores the maximum length and optional custom message.
      */
-    public function __construct(private int $length, protected string $message = '') {}
+    public function __construct(private int $length, string $message = '')
+    {
+        parent::__construct($message);
+    }
 
     /**
      * Checks whether the input string length is below the configured maximum.

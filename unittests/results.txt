@@ -11,6 +11,12 @@ Filter Attributes
  [x] Default to
  [x] Collapse spaces
  [x] Strip tags
+ [x] Slugify
+ [x] Html encode
+ [x] Round
+ [x] Only digits
+ [x] Uc words
+ [x] Uc first
 
 Metadata Attributes
  [x] Column
@@ -39,7 +45,6 @@ Request
  [x] Input returns whole array or single key
  [x] Comparison validator sees other fields
  [x] Non request attributes are ignored
- [x] Get class strips namespace with and without separator
  [x] Metadata accessors resolve configured values
  [x] Metadata accessors fall back to property name
  [x] Valid and invalid keys default to raw property names
@@ -63,6 +68,7 @@ Validation Attributes
  [x] Differs
  [x] Exact length
  [x] Greater than
+ [x] Greater than accepts float threshold
  [x] Greater than equal to
  [x] In list
  [x] Integer
@@ -70,6 +76,7 @@ Validation Attributes
  [x] Is natural no zero
  [x] Is required
  [x] Less than
+ [x] Less than accepts float threshold
  [x] Less than equal to
  [x] Matches
  [x] Max length
@@ -101,4 +108,15 @@ Validation Attributes
  [x] Non scalar input is rejected by guarded validators
  [x] Valid emails rejects empty string
  [x] Valid ip rejects invalid address
+ [x] Equals
+ [x] Not equals
+ [x] Accepted
+ [x] Multiple of
+ [x] Before
+ [x] After
+ [x] Before field
+ [x] After field
+ [x] Valid phone number
+ [x] Valid country code
+ [x] Valid currency code
 

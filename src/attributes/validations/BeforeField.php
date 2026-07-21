@@ -9,11 +9,11 @@ use orange\request\RequestAttribute;
 
 #[Attribute(Attribute::TARGET_PROPERTY)]
 /**
- * Validates that input matches another request field.
+ * Validates that input is a date strictly before another request field's date.
  */
-class Matches extends RequestAttribute
+class BeforeField extends RequestAttribute
 {
-    protected string $errorMsg = '%s must match %s';
+    protected string $errorMsg = '%s must be before %s';
 
     /**
      * Stores the comparison field name and optional custom message.
@@ -24,11 +24,24 @@ class Matches extends RequestAttribute
     }
 
     /**
-     * Checks whether the input matches the referenced field value.
+     * Checks whether the input parses to a timestamp earlier than the referenced field's value.
      */
     public function validate(mixed $input): bool
     {
-        return $input === $this->request->input($this->field);
+        $bool = false;
+
+        if (is_string($input) && $input !== '') {
+            $other = $this->request->input($this->field);
+
+            if (is_string($other) && $other !== '') {
+                $inputTime = strtotime($input);
+                $otherTime = strtotime($other);
+
+                $bool = $inputTime !== false && $otherTime !== false && $inputTime < $otherTime;
+            }
+        }
+
+        return $bool;
     }
 
     /**

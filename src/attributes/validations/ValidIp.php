@@ -18,7 +18,10 @@ class ValidIp extends RequestAttribute
     /**
      * Stores the IP version filter and optional custom message.
      */
-    public function __construct(private string $version = '', protected string $message = '') {}
+    public function __construct(private string $version = '', string $message = '')
+    {
+        parent::__construct($message);
+    }
 
     /**
      * Checks whether the input is a valid IP address for the configured version.

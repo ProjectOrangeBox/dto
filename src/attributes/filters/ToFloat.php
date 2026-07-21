@@ -14,10 +14,17 @@ use orange\request\RequestAttribute;
 class ToFloat extends RequestAttribute
 {
     /**
-     * Returns the float-cast value.
+     * Returns the float-cast value, or the original value when casting would
+     * trigger a PHP conversion warning (arrays, objects).
      */
     public function filter(mixed $input): mixed
     {
-        return (float)$input;
+        $output = $input;
+
+        if (is_scalar($input) || $input === null) {
+            $output = (float)$input;
+        }
+
+        return $output;
     }
 }

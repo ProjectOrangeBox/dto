@@ -14,10 +14,17 @@ use orange\request\RequestAttribute;
 class ToString extends RequestAttribute
 {
     /**
-     * Returns the string-cast value.
+     * Returns the string-cast value, or the original value when casting would
+     * trigger a PHP conversion warning (arrays, objects without __toString).
      */
     public function filter(mixed $input): mixed
     {
-        return (string)$input;
+        $output = $input;
+
+        if (is_scalar($input) || $input === null) {
+            $output = (string)$input;
+        }
+
+        return $output;
     }
 }

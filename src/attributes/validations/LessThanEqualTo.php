@@ -18,7 +18,10 @@ class LessThanEqualTo extends RequestAttribute
     /**
      * Stores the comparison value and optional custom message.
      */
-    public function __construct(protected int $length, protected string $message = '') {}
+    public function __construct(protected int|float $value, string $message = '')
+    {
+        parent::__construct($message);
+    }
 
     /**
      * Checks whether the input is less than or equal to the configured value.
@@ -28,7 +31,7 @@ class LessThanEqualTo extends RequestAttribute
         $bool = false;
 
         if (is_numeric($input)) {
-            $bool = (float)$input <= $this->length;
+            $bool = (float)$input <= $this->value;
         }
 
         return $bool;
@@ -37,9 +40,9 @@ class LessThanEqualTo extends RequestAttribute
     /**
      * Returns the configured comparison value.
      */
-    public function getValue(): int
+    public function getValue(): int|float
     {
-        return $this->length;
+        return $this->value;
     }
 
     /**
@@ -47,6 +50,6 @@ class LessThanEqualTo extends RequestAttribute
      */
     protected function getMessageValues(): array
     {
-        return [$this->length];
+        return [$this->value];
     }
 }

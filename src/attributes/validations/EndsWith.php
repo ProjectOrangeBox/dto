@@ -18,7 +18,10 @@ class EndsWith extends RequestAttribute
     /**
      * Stores the required suffix and optional custom message.
      */
-    public function __construct(private string $needle, protected string $message = '') {}
+    public function __construct(private string $needle, string $message = '')
+    {
+        parent::__construct($message);
+    }
 
     /**
      * Checks whether the input string ends with the configured suffix.

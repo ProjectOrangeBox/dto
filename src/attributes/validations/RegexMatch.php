@@ -18,7 +18,10 @@ class RegexMatch extends RequestAttribute
     /**
      * Stores the regex pattern and optional custom message.
      */
-    public function __construct(private string $pattern, protected string $message = '') {}
+    public function __construct(private string $pattern, string $message = '')
+    {
+        parent::__construct($message);
+    }
 
     /**
      * Checks whether the input matches the configured regex pattern.

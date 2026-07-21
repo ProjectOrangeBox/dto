@@ -18,7 +18,10 @@ class InList extends RequestAttribute
   /**
    * Stores the allowed values and optional custom message.
    */
-  public function __construct(private array $values, protected string $message = '') {}
+  public function __construct(private array $values, string $message = '')
+  {
+    parent::__construct($message);
+  }
 
   /**
    * Checks whether the input is present in the configured list.

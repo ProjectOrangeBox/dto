@@ -45,17 +45,17 @@ class Request
   public function __construct(protected array $input)
   {
     // use reflection to get the properties and their attributes
-    $reflectionClass = new ReflectionClass(get_class($this));
+    $reflectionClass = new ReflectionClass($this);
 
     // loop through the properties and get their attributes
     foreach ($reflectionClass->getProperties() as $property) {
       $attributes = [];
 
       foreach ($property->getAttributes() as $attribute) {
-        $attributeClassName = $attribute->getName();
+        $attributeReflection = new ReflectionClass($attribute->getName());
 
-        if ((new ReflectionClass($attributeClassName))->isSubclassOf(RequestAttribute::class)) {
-          $attributes[$this->getClass($attributeClassName)] = $attribute->newInstance();
+        if ($attributeReflection->isSubclassOf(RequestAttribute::class)) {
+          $attributes[$attributeReflection->getShortName()] = $attribute->newInstance();
         }
       }
 
@@ -217,7 +217,7 @@ class Request
    *
    * @param false|string $tablename Optional table name to retrieve specific table data; returns all tables if false
    * @return array The table or column data structure
-   * @throws \Exception When the requested table name is not found
+   * @throws \OutOfBoundsException When the requested table name is not found
    */
   public function asTable(false|string $tablename = false): array
   {
@@ -225,7 +225,7 @@ class Request
 
     if ($tablename) {
       if (!isset($this->db['tables'][$tablename])) {
-        throw new \Exception('Table ' . $tablename . ' not found.');
+        throw new \OutOfBoundsException('Table ' . $tablename . ' not found.');
       }
 
       $db = $this->db['tables'][$tablename];
@@ -268,27 +268,6 @@ class Request
     }
 
     return $this->input[$key] ?? $default;
-  }
-
-  /**
-   * Extracts the short class name from a fully qualified class name.
-   *
-   * @param string $className The fully qualified class name
-   * @return string The short class name without namespace
-   */
-  protected function getClass($className): string
-  {
-    // Find the position of the last backslash
-    $lastSlashPos = strrpos($className, '\\');
-
-    if ($lastSlashPos === false) {
-      // No namespace separator found, so the whole string is the class name
-      $shortName = $className;
-    } else {
-      // Extract the substring after the last backslash
-      $shortName = substr($className, $lastSlashPos + 1);
-    }
-    return $shortName;
   }
 
   /**

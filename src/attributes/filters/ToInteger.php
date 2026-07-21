@@ -14,10 +14,17 @@ use orange\request\RequestAttribute;
 class ToInteger extends RequestAttribute
 {
     /**
-     * Returns the integer-cast value.
+     * Returns the integer-cast value, or the original value when casting would
+     * trigger a PHP conversion warning (arrays, objects).
      */
     public function filter(mixed $input): mixed
     {
-        return (int)$input;
+        $output = $input;
+
+        if (is_scalar($input) || $input === null) {
+            $output = (int)$input;
+        }
+
+        return $output;
     }
 }

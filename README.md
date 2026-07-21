@@ -136,7 +136,7 @@ public int $qty;
 | `asTable(false\|string $table = false): array` | valid values grouped by **table** (all tables, or one named table) |
 | `input(?string $key = null, mixed $default = ''): mixed` | the raw, unprocessed input (whole array, or one key) |
 
-`asTable('name')` throws `\Exception` if the requested table does not exist.
+`asTable('name')` throws `\OutOfBoundsException` if the requested table does not exist.
 
 ### Inspecting which fields passed / failed
 
@@ -211,6 +211,12 @@ Filters transform the value and never fail.
 | `#[ToString]` | casts to `string` |
 | `#[NullIfEmpty]` | converts an empty string `''` to `null` (leaves `'0'` / `0` alone) |
 | `#[DefaultTo(mixed $default = null)]` | substitutes `$default` when the value is `null` or `''` |
+| `#[Slugify]` | lower-cases and converts to a hyphen-separated slug (`"My Post!"` → `"my-post"`) |
+| `#[HtmlEncode]` | encodes HTML special characters (`htmlspecialchars`, `ENT_QUOTES`) |
+| `#[Round(int $precision = 0)]` | rounds numeric input to `$precision` decimal places |
+| `#[OnlyDigits]` | strips every non-digit character |
+| `#[UcWords]` | title-cases each word (multibyte-safe) |
+| `#[UcFirst]` | upper-cases just the first character (multibyte-safe) |
 
 ## Validation Attributes
 
@@ -240,11 +246,12 @@ constructor argument (see [Custom error messages](#custom-error-messages)).
 | `#[Decimal]` | is a decimal number (has a fractional part) |
 | `#[IsNatural]` | is a natural number (`0` and up) |
 | `#[IsNaturalNoZero]` | is a natural number greater than zero |
-| `#[GreaterThan(int $value)]` | is greater than `$value` |
-| `#[GreaterThanEqualTo(int $value)]` | is greater than or equal to `$value` |
-| `#[LessThan(int $value)]` | is less than `$value` |
-| `#[LessThanEqualTo(int $value)]` | is less than or equal to `$value` |
+| `#[GreaterThan(int\|float $value)]` | is greater than `$value` |
+| `#[GreaterThanEqualTo(int\|float $value)]` | is greater than or equal to `$value` |
+| `#[LessThan(int\|float $value)]` | is less than `$value` |
+| `#[LessThanEqualTo(int\|float $value)]` | is less than or equal to `$value` |
 | `#[Between(int\|float $min, int\|float $max)]` | is within `[min, max]` (inclusive) |
+| `#[MultipleOf(int\|float $step)]` | is an exact multiple of `$step` |
 
 ### Length
 
@@ -263,13 +270,16 @@ constructor argument (see [Custom error messages](#custom-error-messages)).
 
 | Attribute | Passes when… |
 | --- | --- |
-| `#[IsRequired]` | the value is not empty |
+| `#[IsRequired]` | the value is "filled" — not `null`, `''`, or `[]` (`'0'` and `0` **do** count as filled) |
 | `#[Matches(string $field)]` | the value equals another field's input value |
 | `#[Differs(string $field)]` | the value differs from another field's input value |
 | `#[RequiredIf(string $field, string $value)]` | present, but only required when `$field` equals `$value` |
-| `#[RequiredWith(string $field)]` | present, but only required when `$field` is non-empty |
+| `#[RequiredWith(string $field)]` | present, but only required when `$field` is filled |
 | `#[InList(array $values)]` | is one of `$values` |
 | `#[NotInList(array $values)]` | is none of `$values` |
+| `#[Equals(mixed $value)]` | equals the fixed literal `$value` (compared as strings) |
+| `#[NotEquals(mixed $value)]` | differs from the fixed literal `$value` (compared as strings) |
+| `#[Accepted]` | is a truthy "checkbox" value: `true`, `1`, `'1'`, `'yes'`, `'on'`, or `'true'` |
 
 ### Formats
 
@@ -282,12 +292,19 @@ constructor argument (see [Custom error messages](#custom-error-messages)).
 | `#[ValidIp(string $version = '')]` | a valid IP (`''` = any, `'ipv4'`, or `'ipv6'`) |
 | `#[ValidDate]` | a date string parseable by `strtotime()` |
 | `#[DateFormat(string $format = 'Y-m-d')]` | an exact match for the given date `$format` |
+| `#[Before(string $date)]` | a date strictly before `$date` (anything `strtotime()` understands, including `'now'`) |
+| `#[After(string $date)]` | a date strictly after `$date` (anything `strtotime()` understands, including `'now'`) |
+| `#[BeforeField(string $field)]` | a date strictly before another field's date value |
+| `#[AfterField(string $field)]` | a date strictly after another field's date value |
 | `#[ValidTimezone]` | a valid PHP timezone identifier |
 | `#[ValidJson]` | a well-formed JSON string |
 | `#[ValidUuid]` | a valid RFC 4122 UUID (versions 1–8) |
 | `#[ValidBase64]` | a valid base64 string |
 | `#[ValidHexColor]` | a 3- or 6-digit hex color, with optional leading `#` |
 | `#[ValidCreditCard]` | a 13–19 digit number passing the Luhn checksum |
+| `#[ValidPhoneNumber]` | a plausible phone number — a loose check, not strict E.164 (formatting characters are stripped, then 7–15 digits with an optional leading `+` are required) |
+| `#[ValidCountryCode]` | a valid ISO 3166-1 alpha-2 country code (case-insensitive) |
+| `#[ValidCurrencyCode]` | a valid ISO 4217 alpha-3 currency code (case-insensitive) |
 
 ## Custom Error Messages
 
@@ -321,6 +338,142 @@ output a literal percent sign.
 - **Format validators always run.** There is no "sometimes" concept — a format
   validator like `#[ValidEmail]` will fail on an empty value even alongside
   `#[RequiredIf]`. Pair conditional rules with presence-only checks.
+- **"Filled" isn't PHP's `empty()`.** `#[IsRequired]`, `#[RequiredIf]`, and
+  `#[RequiredWith]` treat a value as present unless it's `null`, `''`, or `[]` —
+  the string `'0'` and the integer `0` both count as filled, unlike `empty()`.
+
+## Using It With the Orange Framework
+
+`orange/request` has no dependency on `orange/framework` — a `Request` subclass
+just needs a plain array. The only framework touchpoint is *where that array
+comes from*, which is the framework's `Input` service
+(`orange\framework\interfaces\InputInterface`, wired up as `$this->input` by
+`orange\framework\controllers\BaseController` via `#[AttachService('input')]`).
+
+`Input` exposes the request body and the query string separately — there's no
+combined "all input" method:
+
+- `$this->input->request()` — the POST/PUT/PATCH body (also parses JSON bodies)
+- `$this->input->query()` — the query string (`$_GET`)
+
+If an endpoint needs both, merge them yourself, e.g.
+`array_merge($this->input->query(), $this->input->request())` (later keys win).
+
+### 1. Build it inline (simplest)
+
+```php
+namespace app\users\controllers;
+
+use orange\framework\controllers\BaseController;
+use app\users\requests\CreateUserRequest;
+use app\users\requests\SearchUsersRequest;
+
+class UserController extends BaseController
+{
+    public function store(): string
+    {
+        $request = new CreateUserRequest($this->input->request());
+
+        if (!$request->isValid()) {
+            // handle $request->errors() however this controller reports failures
+        }
+
+        // ... persist $request->asColumns() / asTable('user') ...
+
+        return '';
+    }
+
+    public function search(): string
+    {
+        $request = new SearchUsersRequest($this->input->query());
+
+        // ...
+
+        return '';
+    }
+}
+```
+
+### 2. Register it as a container service
+
+To avoid instantiating it by hand in every method, register a factory in
+`config/services.php` — the same pattern this app already uses for its `files`
+service — and pull it in with `#[AttachService]`:
+
+```php
+// config/services.php
+use orange\framework\interfaces\ContainerInterface;
+use app\users\requests\CreateUserRequest;
+
+return [
+    'createUserRequest' => function (ContainerInterface $container) {
+        return new CreateUserRequest($container->input->request());
+    },
+];
+```
+
+```php
+use orange\framework\attributes\AttachService;
+use orange\framework\controllers\BaseController;
+use app\users\requests\CreateUserRequest;
+
+class UserController extends BaseController
+{
+    #[AttachService('createUserRequest')]
+    protected CreateUserRequest $createUserRequest;
+
+    public function store(): string
+    {
+        if (!$this->createUserRequest->isValid()) {
+            // ...
+        }
+
+        return '';
+    }
+}
+```
+
+The container resolves each service once per request, so the `Request` is
+built exactly once, from that request's own input — the same lifecycle as the
+`config`, `input`, and `output` services `BaseController` already attaches.
+
+### 3. JSON APIs: reporting validation failures
+
+`orange\framework\controllers\JsonController` already maps a `validationFail`
+status to HTTP 406 in its `$restSuccessMap`, so a failed request reports
+through the same `response()` helper used everywhere else:
+
+```php
+namespace app\users\controllers;
+
+use orange\framework\controllers\JsonController;
+use app\users\requests\CreateUserRequest;
+
+class UserApiController extends JsonController
+{
+    public function store(): string
+    {
+        $request = new CreateUserRequest($this->input->request());
+
+        if (!$request->isValid()) {
+            $this->data['errors'] = $request->errors();
+
+            return $this->response('validationFail'); // 406
+        }
+
+        // ... persist $request->asColumns() / asTable('user') ...
+
+        $this->data = $request->asArray();
+
+        return $this->response('create'); // 201
+    }
+}
+```
+
+Request subclasses have no required location — put them wherever your module
+organizes its code, e.g. `application/<module>/requests/` or
+`api/<module>/requests/`, following the same HMVC layout as the rest of the
+module.
 
 ## Samples
 

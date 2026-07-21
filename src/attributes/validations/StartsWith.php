@@ -18,7 +18,10 @@ class StartsWith extends RequestAttribute
     /**
      * Stores the required prefix and optional custom message.
      */
-    public function __construct(private string $needle, protected string $message = '') {}
+    public function __construct(private string $needle, string $message = '')
+    {
+        parent::__construct($message);
+    }
 
     /**
      * Checks whether the input string starts with the configured prefix.

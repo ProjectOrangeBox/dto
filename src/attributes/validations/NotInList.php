@@ -18,7 +18,10 @@ class NotInList extends RequestAttribute
     /**
      * Stores the disallowed values and optional custom message.
      */
-    public function __construct(private array $values, protected string $message = '') {}
+    public function __construct(private array $values, string $message = '')
+    {
+        parent::__construct($message);
+    }
 
     /**
      * Checks whether the input is absent from the configured list.

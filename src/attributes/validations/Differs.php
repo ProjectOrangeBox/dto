@@ -18,7 +18,10 @@ class Differs extends RequestAttribute
     /**
      * Stores the comparison field name and optional custom message.
      */
-    public function __construct(private string $field, protected string $message = '') {}
+    public function __construct(private string $field, string $message = '')
+    {
+        parent::__construct($message);
+    }
 
     /**
      * Checks whether the input differs from the referenced field value.

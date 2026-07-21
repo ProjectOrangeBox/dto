@@ -47,4 +47,15 @@ class RequestAttribute
     {
         return [];
     }
+
+    /**
+     * Determines whether a value counts as "provided" for presence checks.
+     *
+     * Unlike empty(), this treats '0' and 0 as filled — only null, '', and []
+     * are considered absent.
+     */
+    protected function isFilled(mixed $input): bool
+    {
+        return $input !== null && $input !== '' && $input !== [];
+    }
 }

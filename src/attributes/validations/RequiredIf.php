@@ -18,7 +18,10 @@ class RequiredIf extends RequestAttribute
     /**
      * Stores the trigger field, its expected value, and optional custom message.
      */
-    public function __construct(private string $field, private string $value, protected string $message = '') {}
+    public function __construct(private string $field, private string $value, string $message = '')
+    {
+        parent::__construct($message);
+    }
 
     /**
      * Requires a non-empty value only when the referenced field matches the trigger value.
@@ -26,7 +29,7 @@ class RequiredIf extends RequestAttribute
     public function validate(mixed $input): bool
     {
         if ((string)$this->request->input($this->field) === $this->value) {
-            return !empty($input);
+            return $this->isFilled($input);
         }
 
         return true;

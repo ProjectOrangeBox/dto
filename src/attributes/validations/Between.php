@@ -18,7 +18,10 @@ class Between extends RequestAttribute
     /**
      * Stores the inclusive bounds and optional custom message.
      */
-    public function __construct(private int|float $min, private int|float $max, protected string $message = '') {}
+    public function __construct(private int|float $min, private int|float $max, string $message = '')
+    {
+        parent::__construct($message);
+    }
 
     /**
      * Checks whether the input is between the configured minimum and maximum.
