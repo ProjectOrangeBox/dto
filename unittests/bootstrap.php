@@ -22,8 +22,10 @@ if (!function_exists('orangeErrorHandler')) {
 }
 
 // define the orange log function to avoid errors when running tests
-function logMsg()
+function logMsg() {}
+function isLogEnabled()
 {
+    return false;
 }
 
 require __DIR__ . '/../../framework/unittest/unitTestHelper.php';
