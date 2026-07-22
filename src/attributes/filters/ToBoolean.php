@@ -26,13 +26,15 @@ class ToBoolean extends DtoAttribute
             $output = $input;
         }
 
-        // Handle string representations of boolean values.
+        // Handle string representations of boolean values — the same truthy
+        // set IsBoolean accepts. '1' matters: PDO with emulated prepares
+        // returns integer columns as strings, so a stored 1 arrives as '1'.
         if (is_string($input)) {
             // Normalize the string to lowercase for comparison.
             $input = strtolower($input);
 
             // Check for common truthy string values.
-            if ($input === 'true' || $input === 'yes') {
+            if (in_array($input, ['true', 'yes', 'on', '1'], true)) {
                 $output = true;
             }
         }

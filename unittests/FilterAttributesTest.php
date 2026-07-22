@@ -72,8 +72,13 @@ final class FilterAttributesTest extends UnitTestHelper
         $this->assertTrue($rule->filter('TRUE'));
         $this->assertTrue($rule->filter('yes'));
         $this->assertTrue($rule->filter('YES'));
+        $this->assertTrue($rule->filter('on'));
+        // '1' matters: PDO with emulated prepares returns int columns as strings.
+        $this->assertTrue($rule->filter('1'));
         $this->assertFalse($rule->filter('false'));
         $this->assertFalse($rule->filter('no'));
+        $this->assertFalse($rule->filter('off'));
+        $this->assertFalse($rule->filter('0'));
         $this->assertFalse($rule->filter(''));
         // Types with no truthy handling fall through to the default of false.
         $this->assertFalse($rule->filter(1.5));

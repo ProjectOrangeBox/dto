@@ -208,7 +208,7 @@ Filters transform the value and never fail.
 | `#[StripTags]` | removes HTML/PHP tags |
 | `#[ToLower]` / `#[ToUpper]` | multibyte case conversion |
 | `#[StrLimit(int $length)]` | truncates a string to `$length` characters |
-| `#[ToBoolean]` | `true`/`"true"`/`"yes"`/non-zero int → `true`; everything else → `false` |
+| `#[ToBoolean]` | `true`/`"true"`/`"yes"`/`"on"`/`"1"`/non-zero int → `true`; everything else → `false` |
 | `#[ToInteger]` | casts to `int` |
 | `#[ToFloat]` | casts to `float` |
 | `#[ToString]` | casts to `string` |
