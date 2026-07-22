@@ -14,6 +14,7 @@ use orange\dto\DtoAttribute;
 class RequiredWith extends DtoAttribute
 {
     protected string $errorMsg = '%s is required';
+    protected bool $validateWhenAbsent = true;
 
     /**
      * Stores the companion field name and optional custom message.

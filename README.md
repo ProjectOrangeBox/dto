@@ -147,6 +147,7 @@ public int $qty;
 | `invalidKeys(bool $raw = true): array` | keys of fields that failed |
 | `validInputKeys(): array` | passed fields, as resolved input field names |
 | `invalidInputKeys(): array` | failed fields, as resolved input field names |
+| `primary(): ?string` | column name of the `#[IsPrimary]` property — its `#[Column]` name, else its resolved field name; `null` when none is tagged |
 
 By default (`$raw = true`) these return the **raw property names**. Pass `false`
 — or use the `*InputKeys()` wrappers — to get the resolved input field names (the
@@ -194,6 +195,7 @@ $request->asTable('user');
 | `#[Column('col')]` | column name used by `asColumns()` / `asTable()` (defaults to property name) |
 | `#[Table('name', 'database')]` | table to group under in `asTable()`; optional database identifier |
 | `#[Label('Human Name')]` | name used in error messages (defaults to property name) |
+| `#[IsPrimary]` | tags the property holding the record's primary key — a pure marker. Its column name is retrievable via `primary()`. When multiple properties are tagged the last declared wins — there is only one primary |
 
 ## Filter Attributes
 

@@ -222,4 +222,5 @@ final class FilterAttributesTest extends UnitTestHelper
         // Non-string input is returned unchanged.
         $this->assertSame(5, $rule->filter(5));
     }
+
 }

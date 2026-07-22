@@ -14,6 +14,7 @@ use orange\dto\DtoAttribute;
 class IsRequired extends DtoAttribute
 {
     protected string $errorMsg = '%s is required';
+    protected bool $validateWhenAbsent = true;
 
     /**
      * Checks whether the input contains a non-empty value.

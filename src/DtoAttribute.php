@@ -14,6 +14,13 @@ class DtoAttribute
     protected string $errorMsg = '';
 
     /**
+     * When true this rule's validate() runs even when the field is absent
+     * from the input. Presence rules (IsRequired, RequiredIf, RequiredWith)
+     * enable this; ordinary rules only validate a provided value.
+     */
+    protected bool $validateWhenAbsent = false;
+
+    /**
      * Stores an optional custom error message for the attribute.
      */
     public function __construct(protected string $message = '')
@@ -27,6 +34,14 @@ class DtoAttribute
     public function request(Dto $request): void
     {
         $this->dto = $request;
+    }
+
+    /**
+     * Whether validate() should run when the field is absent from the input.
+     */
+    public function validatesAbsent(): bool
+    {
+        return $this->validateWhenAbsent;
     }
 
     /**

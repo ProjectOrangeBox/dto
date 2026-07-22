@@ -21,6 +21,13 @@ Dto
  [x] Valid and invalid keys raw false returns field names
  [x] Valid and invalid input keys return field names
  [x] Input key wrappers match raw false
+ [x] Optional field skips validation when absent
+ [x] Optional field still validates when provided
+ [x] Required field still fails when absent
+ [x] Primary returns column name of is primary property
+ [x] Primary falls back to field name without column
+ [x] Primary is null without is primary
+ [x] Primary last tagged property wins
 
 Dto Attribute
  [x] Default human name is used

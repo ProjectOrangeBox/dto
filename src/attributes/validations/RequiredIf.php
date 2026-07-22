@@ -14,6 +14,7 @@ use orange\dto\DtoAttribute;
 class RequiredIf extends DtoAttribute
 {
     protected string $errorMsg = '%s is required';
+    protected bool $validateWhenAbsent = true;
 
     /**
      * Stores the trigger field, its expected value, and optional custom message.

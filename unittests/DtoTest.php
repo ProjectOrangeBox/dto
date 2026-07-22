@@ -5,6 +5,7 @@ declare(strict_types=1);
 use orange\dto\Dto;
 use orange\dto\attributes\Column;
 use orange\dto\attributes\FieldName;
+use orange\dto\attributes\IsPrimary;
 use orange\dto\attributes\Label;
 use orange\dto\attributes\Table;
 use orange\dto\attributes\filters\ToInteger;
@@ -426,5 +427,100 @@ final class DtoTest extends UnitTestHelper
         // The wrappers are equivalent to calling the base methods with $raw = false.
         $this->assertSame($mixed->validKeys(false), $mixed->validInputKeys());
         $this->assertSame($mixed->invalidKeys(false), $mixed->invalidInputKeys());
+    }
+
+    public function testOptionalFieldSkipsValidationWhenAbsent(): void
+    {
+        // age carries validations but no presence rule, so leaving it out of
+        // the input is not an error — its rules only run on a provided value
+        $request = new class(['name' => 'Don']) extends Dto {
+            #[IsRequired]
+            public string $name;
+
+            #[ToInteger]
+            #[GreaterThan(18)]
+            public int $age;
+        };
+
+        $this->assertTrue($request->isValid());
+        $this->assertSame([], $request->errors());
+    }
+
+    public function testOptionalFieldStillValidatesWhenProvided(): void
+    {
+        $request = new class(['name' => 'Don', 'age' => '10']) extends Dto {
+            #[IsRequired]
+            public string $name;
+
+            #[ToInteger]
+            #[GreaterThan(18)]
+            public int $age;
+        };
+
+        $this->assertFalse($request->isValid());
+        $this->assertSame(['age'], $request->invalidInputKeys());
+    }
+
+    public function testRequiredFieldStillFailsWhenAbsent(): void
+    {
+        // presence rules (validatesAbsent()) run even for absent fields
+        $request = new class([]) extends Dto {
+            #[IsRequired]
+            public string $name;
+        };
+
+        $this->assertFalse($request->isValid());
+        $this->assertArrayHasKey('name', $request->errors());
+    }
+
+    public function testPrimaryReturnsColumnNameOfIsPrimaryProperty(): void
+    {
+        $request = new class(['record_id' => 5]) extends Dto {
+            #[IsPrimary]
+            #[Column('records_pk')]
+            #[FieldName('record_id')]
+            #[ToInteger]
+            public int $id;
+        };
+
+        $this->assertSame('records_pk', $request->primary());
+    }
+
+    public function testPrimaryFallsBackToFieldNameWithoutColumn(): void
+    {
+        $request = new class(['record_id' => 5]) extends Dto {
+            #[IsPrimary]
+            #[FieldName('record_id')]
+            #[ToInteger]
+            public int $id;
+        };
+
+        $this->assertSame('record_id', $request->primary());
+    }
+
+    public function testPrimaryIsNullWithoutIsPrimary(): void
+    {
+        $request = new class(['name' => 'Don']) extends Dto {
+            #[IsRequired]
+            public string $name;
+        };
+
+        $this->assertNull($request->primary());
+    }
+
+    public function testPrimaryLastTaggedPropertyWins(): void
+    {
+        $request = new class(['a' => 1, 'b' => 2]) extends Dto {
+            #[IsPrimary]
+            #[ToInteger]
+            public int $a;
+
+            #[IsPrimary]
+            #[Column('b_pk')]
+            #[ToInteger]
+            public int $b;
+        };
+
+        $this->assertSame('b_pk', $request->primary());
     }
 }
