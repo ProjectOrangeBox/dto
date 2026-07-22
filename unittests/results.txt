@@ -1,3 +1,34 @@
+Dto
+ [x] Valid request is valid
+ [x] Valid request assigns typed properties
+ [x] As array is keyed by property name
+ [x] As columns is keyed by column name
+ [x] As table groups by table name
+ [x] As table can return a single table
+ [x] As table throws for unknown table
+ [x] Invalid request reports errors by field name
+ [x] Invalid fields are excluded from output
+ [x] A single field can fail while others succeed
+ [x] Defaults fall back to the property name
+ [x] Properties without attributes are ignored
+ [x] Empty request produces empty structures
+ [x] Input returns whole array or single key
+ [x] Comparison validator sees other fields
+ [x] Non dto attributes are ignored
+ [x] Metadata accessors resolve configured values
+ [x] Metadata accessors fall back to property name
+ [x] Valid and invalid keys default to raw property names
+ [x] Valid and invalid keys raw false returns field names
+ [x] Valid and invalid input keys return field names
+ [x] Input key wrappers match raw false
+
+Dto Attribute
+ [x] Default human name is used
+ [x] Provided human name overrides default
+ [x] Custom message overrides error template
+ [x] Get message values are appended to template
+ [x] Request can be shared
+
 Filter Attributes
  [x] To string
  [x] To integer
@@ -27,37 +58,6 @@ Metadata Attributes
  [x] Label defaults to empty string
  [x] Table
  [x] Table defaults to empty strings
-
-Request
- [x] Valid request is valid
- [x] Valid request assigns typed properties
- [x] As array is keyed by property name
- [x] As columns is keyed by column name
- [x] As table groups by table name
- [x] As table can return a single table
- [x] As table throws for unknown table
- [x] Invalid request reports errors by field name
- [x] Invalid fields are excluded from output
- [x] A single field can fail while others succeed
- [x] Defaults fall back to the property name
- [x] Properties without attributes are ignored
- [x] Empty request produces empty structures
- [x] Input returns whole array or single key
- [x] Comparison validator sees other fields
- [x] Non request attributes are ignored
- [x] Metadata accessors resolve configured values
- [x] Metadata accessors fall back to property name
- [x] Valid and invalid keys default to raw property names
- [x] Valid and invalid keys raw false returns field names
- [x] Valid and invalid input keys return field names
- [x] Input key wrappers match raw false
-
-Request Attribute
- [x] Default human name is used
- [x] Provided human name overrides default
- [x] Custom message overrides error template
- [x] Get message values are appended to template
- [x] Request can be shared
 
 Validation Attributes
  [x] Alpha
