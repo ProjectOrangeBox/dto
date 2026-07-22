@@ -2,11 +2,25 @@
 
 declare(strict_types=1);
 
+use orange\dto\attributes\filters\Abs;
+use orange\dto\attributes\filters\Ceil;
+use orange\dto\attributes\filters\Clamp;
 use orange\dto\attributes\filters\CollapseSpaces;
 use orange\dto\attributes\filters\DefaultTo;
+use orange\dto\attributes\filters\Floor;
+use orange\dto\attributes\filters\HtmlDecode;
 use orange\dto\attributes\filters\HtmlEncode;
+use orange\dto\attributes\filters\NormalizeDateTime;
+use orange\dto\attributes\filters\NormalizeLineEndings;
+use orange\dto\attributes\filters\NormalizePhone;
 use orange\dto\attributes\filters\NullIfEmpty;
+use orange\dto\attributes\filters\OnlyAlpha;
+use orange\dto\attributes\filters\OnlyAlphaNumeric;
 use orange\dto\attributes\filters\OnlyDigits;
+use orange\dto\attributes\filters\Pad;
+use orange\dto\attributes\filters\StripControlChars;
+use orange\dto\attributes\filters\StripSpaces;
+use orange\dto\attributes\filters\Transliterate;
 use orange\dto\attributes\filters\Round;
 use orange\dto\attributes\filters\Slugify;
 use orange\dto\attributes\filters\StripTags;
@@ -223,4 +237,166 @@ final class FilterAttributesTest extends UnitTestHelper
         $this->assertSame(5, $rule->filter(5));
     }
 
+    public function testHtmlDecode(): void
+    {
+        $rule = new HtmlDecode();
+
+        $this->assertSame('<b>bold & "quoted"</b>', $rule->filter('&lt;b&gt;bold &amp; &quot;quoted&quot;&lt;/b&gt;'));
+        $this->assertSame("it's", $rule->filter('it&#039;s'));
+        // Non-string input is returned unchanged.
+        $this->assertSame(5, $rule->filter(5));
+    }
+
+    public function testOnlyAlpha(): void
+    {
+        $rule = new OnlyAlpha();
+
+        $this->assertSame('abcDEF', $rule->filter('abc123DEF!@#'));
+        $this->assertSame('', $rule->filter('123'));
+        // Non-string input is returned unchanged.
+        $this->assertSame(5, $rule->filter(5));
+    }
+
+    public function testOnlyAlphaNumeric(): void
+    {
+        $rule = new OnlyAlphaNumeric();
+
+        $this->assertSame('abc123DEF', $rule->filter('abc-123 DEF!'));
+        $this->assertSame('', $rule->filter('!@#'));
+        // Non-string input is returned unchanged.
+        $this->assertSame(5, $rule->filter(5));
+    }
+
+    public function testClamp(): void
+    {
+        $rule = new Clamp(1, 10);
+
+        $this->assertSame(5, $rule->filter(5));
+        $this->assertSame(1, $rule->filter(-3));
+        $this->assertSame(10, $rule->filter(42));
+        $this->assertSame(2.5, $rule->filter(2.5));
+        $this->assertSame(10, $rule->filter('42'));
+        // Non-numeric input is returned unchanged.
+        $this->assertSame('abc', $rule->filter('abc'));
+    }
+
+    public function testCeil(): void
+    {
+        $rule = new Ceil();
+
+        $this->assertSame(5.0, $rule->filter(4.2));
+        $this->assertSame(5.0, $rule->filter('4.2'));
+        $this->assertSame(-4.0, $rule->filter(-4.2));
+        // Non-numeric input is returned unchanged.
+        $this->assertSame('abc', $rule->filter('abc'));
+    }
+
+    public function testFloor(): void
+    {
+        $rule = new Floor();
+
+        $this->assertSame(4.0, $rule->filter(4.8));
+        $this->assertSame(4.0, $rule->filter('4.8'));
+        $this->assertSame(-5.0, $rule->filter(-4.2));
+        // Non-numeric input is returned unchanged.
+        $this->assertSame('abc', $rule->filter('abc'));
+    }
+
+    public function testAbs(): void
+    {
+        $rule = new Abs();
+
+        $this->assertSame(5, $rule->filter(-5));
+        $this->assertSame(5, $rule->filter(5));
+        $this->assertSame(2.5, $rule->filter(-2.5));
+        $this->assertSame(7, $rule->filter('-7'));
+        // Non-numeric input is returned unchanged.
+        $this->assertSame('abc', $rule->filter('abc'));
+    }
+
+    public function testStripControlChars(): void
+    {
+        $rule = new StripControlChars();
+
+        // Zero-width and control characters are removed.
+        $this->assertSame('hello', $rule->filter("he\u{200B}llo\x00"));
+        $this->assertSame('bom-free', $rule->filter("\u{FEFF}bom-free"));
+        // Tabs and newlines survive.
+        $this->assertSame("a\tb\nc", $rule->filter("a\tb\nc"));
+        // Non-string input is returned unchanged.
+        $this->assertSame(5, $rule->filter(5));
+    }
+
+    public function testNormalizeLineEndings(): void
+    {
+        $rule = new NormalizeLineEndings();
+
+        $this->assertSame("a\nb\nc", $rule->filter("a\r\nb\rc"));
+        $this->assertSame("already\nunix", $rule->filter("already\nunix"));
+        // Non-string input is returned unchanged.
+        $this->assertSame(5, $rule->filter(5));
+    }
+
+    public function testStripSpaces(): void
+    {
+        $rule = new StripSpaces();
+
+        $this->assertSame('4111111111111111', $rule->filter('4111 1111 1111 1111'));
+        $this->assertSame('abc', $rule->filter(" a\tb\nc "));
+        // Non-string input is returned unchanged.
+        $this->assertSame(5, $rule->filter(5));
+    }
+
+    public function testTransliterate(): void
+    {
+        $rule = new Transliterate();
+
+        $this->assertSame('resume', $rule->filter('résumé'));
+        $this->assertSame('Uber', $rule->filter('Über'));
+        $this->assertSame('plain', $rule->filter('plain'));
+        // Non-string input is returned unchanged.
+        $this->assertSame(5, $rule->filter(5));
+    }
+
+    public function testPad(): void
+    {
+        $rule = new Pad(5);
+
+        $this->assertSame('00042', $rule->filter('42'));
+        $this->assertSame('00042', $rule->filter(42));
+        // Values at or beyond the length are unchanged.
+        $this->assertSame('123456', $rule->filter('123456'));
+        // Non-string, non-integer input is returned unchanged.
+        $this->assertSame(4.2, $rule->filter(4.2));
+
+        $spaces = new Pad(4, ' ');
+        $this->assertSame('  ab', $spaces->filter('ab'));
+    }
+
+    public function testNormalizeDateTime(): void
+    {
+        $rule = new NormalizeDateTime();
+
+        $this->assertSame('2026-08-01 09:30:00', $rule->filter('Aug 1 2026 9:30am'));
+        $this->assertSame('2026-08-01 00:00:00', $rule->filter('2026-08-01'));
+
+        $dateOnly = new NormalizeDateTime('Y-m-d');
+        $this->assertSame('2026-08-01', $dateOnly->filter('08/01/2026'));
+
+        // Unparseable or non-string input is returned unchanged.
+        $this->assertSame('not a date', $rule->filter('not a date'));
+        $this->assertSame('', $rule->filter(''));
+        $this->assertSame(5, $rule->filter(5));
+    }
+
+    public function testNormalizePhone(): void
+    {
+        $rule = new NormalizePhone();
+
+        $this->assertSame('5551234567', $rule->filter('(555) 123-4567'));
+        $this->assertSame('+15551234567', $rule->filter('+1 555.123.4567'));
+        $this->assertSame('5551234', $rule->filter('555-1234'));
+        // Non-string input is returned unchanged.
+        $this->assertSame(5551234, $rule->filter(5551234));
+    }
 }

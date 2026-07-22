@@ -220,6 +220,19 @@ Filters transform the value and never fail.
 | `#[OnlyDigits]` | strips every non-digit character |
 | `#[UcWords]` | title-cases each word (multibyte-safe) |
 | `#[UcFirst]` | upper-cases just the first character (multibyte-safe) |
+| `#[HtmlDecode]` | decodes HTML entities — the inverse of `#[HtmlEncode]` |
+| `#[OnlyAlpha]` | strips every non-letter character |
+| `#[OnlyAlphaNumeric]` | strips every character that is not a letter or digit |
+| `#[Clamp(int\|float $min, int\|float $max)]` | forces numeric input into `[min, max]` — the filter counterpart of `#[Between]` |
+| `#[Ceil]` / `#[Floor]` | rounds numeric input up / down to a whole number |
+| `#[Abs]` | absolute value of numeric input |
+| `#[StripControlChars]` | removes control and zero-width characters (keeps tabs and newlines) |
+| `#[NormalizeLineEndings]` | converts `\r\n` and `\r` line endings to `\n` |
+| `#[StripSpaces]` | removes all whitespace (card numbers, codes) |
+| `#[Transliterate]` | folds accents to ASCII (`é` → `e`); uses intl when available, iconv otherwise |
+| `#[Pad(int $length, string $padString = '0')]` | left-pads strings/integers to a fixed length (`42` → `00042`) |
+| `#[NormalizeDateTime(string $format = 'Y-m-d H:i:s')]` | reformats any `strtotime()`-parseable date to a canonical format; unparseable input passes through |
+| `#[NormalizePhone]` | strips phone formatting, keeping digits and a leading `+` |
 
 ## Validation Attributes
 
@@ -238,7 +251,9 @@ constructor argument (see [Custom error messages](#custom-error-messages)).
 | `#[StartsWith(string $needle)]` | starts with `$needle` |
 | `#[EndsWith(string $needle)]` | ends with `$needle` |
 | `#[Contains(string $needle)]` | contains `$needle` |
+| `#[NotContains(string $needle)]` | does not contain `$needle` |
 | `#[RegexMatch(string $pattern)]` | matches the PCRE `$pattern` |
+| `#[NotRegexMatch(string $pattern)]` | does not match the PCRE `$pattern` |
 
 ### Numbers
 
@@ -278,6 +293,10 @@ constructor argument (see [Custom error messages](#custom-error-messages)).
 | `#[Differs(string $field)]` | the value differs from another field's input value |
 | `#[RequiredIf(string $field, string $value)]` | present, but only required when `$field` equals `$value` |
 | `#[RequiredWith(string $field)]` | present, but only required when `$field` is filled |
+| `#[RequiredUnless(string $field, string $value)]` | required except when `$field` equals `$value` |
+| `#[RequiredWithout(string $field)]` | required when `$field` is empty |
+| `#[ProhibitedIf(string $field, string $value)]` | must be empty when `$field` equals `$value` |
+| `#[ProhibitedWith(string $field)]` | must be empty when `$field` is filled — the two fields are mutually exclusive |
 | `#[InList(array $values)]` | is one of `$values` |
 | `#[NotInList(array $values)]` | is none of `$values` |
 | `#[Equals(mixed $value)]` | equals the fixed literal `$value` (compared as strings) |
@@ -297,6 +316,28 @@ constructor argument (see [Custom error messages](#custom-error-messages)).
 | `#[DateFormat(string $format = 'Y-m-d')]` | an exact match for the given date `$format` |
 | `#[Before(string $date)]` | a date strictly before `$date` (anything `strtotime()` understands, including `'now'`) |
 | `#[After(string $date)]` | a date strictly after `$date` (anything `strtotime()` understands, including `'now'`) |
+| `#[MinAge(int $years)]` | a date at least `$years` years in the past (date-of-birth rules) |
+| `#[MaxAge(int $years)]` | a date no more than `$years` years in the past |
+| `#[ValidUlid]` | a ULID (26 characters of Crockford base32) |
+| `#[ValidIban]` | an IBAN, verified with the ISO 7064 mod-97 checksum (spaces and case ignored) |
+| `#[ValidIsbn]` | an ISBN-10 or ISBN-13 including its checksum (hyphens and spaces ignored) |
+| `#[ValidLuhn]` | passes the Luhn mod-10 checksum (IMEIs, account numbers; use `#[ValidCreditCard]` for cards) |
+| `#[ValidMacAddress]` | a MAC address (colon, hyphen, or dot notation) |
+| `#[ValidPort]` | a network port number (1–65535) |
+| `#[ValidSemver]` | a semantic version per semver.org 2.0.0 (`1.2.3`, `2.0.0-rc.1`) |
+| `#[ValidFilename]` | a safe bare filename — no separators, traversal, control characters, or null bytes |
+
+### Arrays
+
+Multi-select and checkbox-group inputs arrive as arrays; these rules validate
+the array itself:
+
+| Attribute | Passes when the value… |
+| --- | --- |
+| `#[IsArray]` | is an array |
+| `#[MinCount(int $count)]` | is an array with at least `$count` elements |
+| `#[MaxCount(int $count)]` | is an array with at most `$count` elements |
+| `#[InListEach(array $values)]` | is an array whose every element is one of `$values` |
 | `#[BeforeField(string $field)]` | a date strictly before another field's date value |
 | `#[AfterField(string $field)]` | a date strictly after another field's date value |
 | `#[ValidTimezone]` | a valid PHP timezone identifier |

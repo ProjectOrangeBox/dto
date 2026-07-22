@@ -55,6 +55,20 @@ Filter Attributes
  [x] Only digits
  [x] Uc words
  [x] Uc first
+ [x] Html decode
+ [x] Only alpha
+ [x] Only alpha numeric
+ [x] Clamp
+ [x] Ceil
+ [x] Floor
+ [x] Abs
+ [x] Strip control chars
+ [x] Normalize line endings
+ [x] Strip spaces
+ [x] Transliterate
+ [x] Pad
+ [x] Normalize date time
+ [x] Normalize phone
 
 Metadata Attributes
  [x] Column
@@ -126,4 +140,24 @@ Validation Attributes
  [x] Valid phone number
  [x] Valid country code
  [x] Valid currency code
+ [x] Required unless
+ [x] Required without
+ [x] Prohibited if
+ [x] Prohibited with
+ [x] Not regex match
+ [x] Not contains
+ [x] Valid ulid
+ [x] Valid iban
+ [x] Valid isbn
+ [x] Valid luhn
+ [x] Valid mac address
+ [x] Valid port
+ [x] Valid semver
+ [x] Valid filename
+ [x] Is array
+ [x] Min count
+ [x] Max count
+ [x] In list each
+ [x] Min age
+ [x] Max age
 

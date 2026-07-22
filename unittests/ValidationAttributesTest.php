@@ -24,22 +24,34 @@ use orange\dto\attributes\validations\ExactLength;
 use orange\dto\attributes\validations\GreaterThan;
 use orange\dto\attributes\validations\GreaterThanEqualTo;
 use orange\dto\attributes\validations\InList;
+use orange\dto\attributes\validations\InListEach;
 use orange\dto\attributes\validations\Integer as IntegerValidation;
+use orange\dto\attributes\validations\IsArray;
 use orange\dto\attributes\validations\IsNatural;
 use orange\dto\attributes\validations\IsNaturalNoZero;
 use orange\dto\attributes\validations\IsRequired;
 use orange\dto\attributes\validations\LessThan;
 use orange\dto\attributes\validations\LessThanEqualTo;
 use orange\dto\attributes\validations\Matches;
+use orange\dto\attributes\validations\MaxAge;
+use orange\dto\attributes\validations\MaxCount;
 use orange\dto\attributes\validations\MaxLength;
+use orange\dto\attributes\validations\MinAge;
+use orange\dto\attributes\validations\MinCount;
 use orange\dto\attributes\validations\MinLength;
 use orange\dto\attributes\validations\MultipleOf;
+use orange\dto\attributes\validations\NotContains;
 use orange\dto\attributes\validations\NotEquals;
 use orange\dto\attributes\validations\NotInList;
+use orange\dto\attributes\validations\NotRegexMatch;
 use orange\dto\attributes\validations\Numeric;
+use orange\dto\attributes\validations\ProhibitedIf;
+use orange\dto\attributes\validations\ProhibitedWith;
 use orange\dto\attributes\validations\RegexMatch;
 use orange\dto\attributes\validations\RequiredIf;
+use orange\dto\attributes\validations\RequiredUnless;
 use orange\dto\attributes\validations\RequiredWith;
+use orange\dto\attributes\validations\RequiredWithout;
 use orange\dto\attributes\validations\Slug;
 use orange\dto\attributes\validations\StartsWith;
 use orange\dto\attributes\validations\ValidBase64;
@@ -49,12 +61,20 @@ use orange\dto\attributes\validations\ValidCurrencyCode;
 use orange\dto\attributes\validations\ValidDate;
 use orange\dto\attributes\validations\ValidEmail;
 use orange\dto\attributes\validations\ValidEmails;
+use orange\dto\attributes\validations\ValidFilename;
 use orange\dto\attributes\validations\ValidHexColor;
 use orange\dto\attributes\validations\ValidHostname;
+use orange\dto\attributes\validations\ValidIban;
 use orange\dto\attributes\validations\ValidIp;
+use orange\dto\attributes\validations\ValidIsbn;
 use orange\dto\attributes\validations\ValidJson;
+use orange\dto\attributes\validations\ValidLuhn;
+use orange\dto\attributes\validations\ValidMacAddress;
 use orange\dto\attributes\validations\ValidPhoneNumber;
+use orange\dto\attributes\validations\ValidPort;
+use orange\dto\attributes\validations\ValidSemver;
 use orange\dto\attributes\validations\ValidTimezone;
+use orange\dto\attributes\validations\ValidUlid;
 use orange\dto\attributes\validations\ValidUrl;
 use orange\dto\attributes\validations\ValidUuid;
 
@@ -854,5 +874,291 @@ final class ValidationAttributesTest extends UnitTestHelper
         $this->assertFalse($rule->validate(''));
         $this->assertEquals('This field must be a valid currency code', $rule->getMessage());
         $this->assertEquals('Currency must be a valid currency code', $rule->getMessage('Currency'));
+    }
+
+    public function testRequiredUnless(): void
+    {
+        $rule = new RequiredUnless('type', 'guest');
+        $rule->request($this->makeRequest(['type' => 'member']));
+
+        // The exempting value is absent, so the field is required.
+        $this->assertTrue($rule->validate('filled'));
+        $this->assertFalse($rule->validate(''));
+        $this->assertEquals('type', $rule->getField());
+        $this->assertEquals('guest', $rule->getValue());
+        $this->assertEquals('This field is required', $rule->getMessage());
+
+        // The exempting value matches, so the field is optional.
+        $optional = new RequiredUnless('type', 'guest');
+        $optional->request($this->makeRequest(['type' => 'guest']));
+        $this->assertTrue($optional->validate(''));
+    }
+
+    public function testRequiredWithout(): void
+    {
+        $rule = new RequiredWithout('email');
+        $rule->request($this->makeRequest([]));
+
+        // The companion field is empty, so this field is required.
+        $this->assertTrue($rule->validate('555-1234'));
+        $this->assertFalse($rule->validate(''));
+        $this->assertEquals('email', $rule->getField());
+        $this->assertEquals('This field is required', $rule->getMessage());
+
+        // The companion field has a value, so this field is optional.
+        $optional = new RequiredWithout('email');
+        $optional->request($this->makeRequest(['email' => 'don@example.com']));
+        $this->assertTrue($optional->validate(''));
+    }
+
+    public function testProhibitedIf(): void
+    {
+        $rule = new ProhibitedIf('type', 'guest');
+        $rule->request($this->makeRequest(['type' => 'guest']));
+
+        // The prohibiting value matches, so the field must be empty.
+        $this->assertTrue($rule->validate(''));
+        $this->assertFalse($rule->validate('filled'));
+        $this->assertEquals('type', $rule->getField());
+        $this->assertEquals('guest', $rule->getValue());
+        $this->assertEquals('This field must be empty', $rule->getMessage());
+
+        // The prohibiting value is absent, so the field may be filled.
+        $allowed = new ProhibitedIf('type', 'guest');
+        $allowed->request($this->makeRequest(['type' => 'member']));
+        $this->assertTrue($allowed->validate('filled'));
+    }
+
+    public function testProhibitedWith(): void
+    {
+        $rule = new ProhibitedWith('card_number');
+        $rule->request($this->makeRequest(['card_number' => '4111']));
+
+        // The companion field is filled, so this field must be empty.
+        $this->assertTrue($rule->validate(''));
+        $this->assertFalse($rule->validate('paypal@example.com'));
+        $this->assertEquals('card_number', $rule->getField());
+        $this->assertEquals('This field must be empty', $rule->getMessage());
+
+        // The companion field is empty, so this field may be filled.
+        $allowed = new ProhibitedWith('card_number');
+        $allowed->request($this->makeRequest([]));
+        $this->assertTrue($allowed->validate('paypal@example.com'));
+    }
+
+    public function testNotRegexMatch(): void
+    {
+        $rule = new NotRegexMatch('/^admin/i');
+
+        $this->assertTrue($rule->validate('donmyers'));
+        $this->assertFalse($rule->validate('admin2'));
+        $this->assertFalse($rule->validate('ADMINuser'));
+        $this->assertEquals('/^admin/i', $rule->getPattern());
+        $this->assertEquals('This field is not in an allowed format', $rule->getMessage());
+    }
+
+    public function testNotContains(): void
+    {
+        $rule = new NotContains(' ');
+
+        $this->assertTrue($rule->validate('no-spaces-here'));
+        $this->assertFalse($rule->validate('has a space'));
+        $this->assertEquals(' ', $rule->getNeedle());
+        $this->assertEquals('This field must not contain  ', $rule->getMessage());
+    }
+
+    public function testValidUlid(): void
+    {
+        $rule = new ValidUlid();
+
+        $this->assertTrue($rule->validate('01ARZ3NDEKTSV4RRFFQ69G5FAV'));
+        $this->assertTrue($rule->validate('01arz3ndektsv4rrffq69g5fav'));
+        // 'I', 'L', 'O', 'U' are not in Crockford base32.
+        $this->assertFalse($rule->validate('01ARZ3NDEKTSV4RRFFQ69G5FAI'));
+        // The first character caps the 48-bit timestamp at 7.
+        $this->assertFalse($rule->validate('81ARZ3NDEKTSV4RRFFQ69G5FAV'));
+        $this->assertFalse($rule->validate('01ARZ3NDEKTSV4RRFFQ69G5FA'));
+        $this->assertFalse($rule->validate(''));
+        $this->assertEquals('This field must contain a valid ULID', $rule->getMessage());
+    }
+
+    public function testValidIban(): void
+    {
+        $rule = new ValidIban();
+
+        $this->assertTrue($rule->validate('GB82 WEST 1234 5698 7654 32'));
+        $this->assertTrue($rule->validate('DE89370400440532013000'));
+        $this->assertTrue($rule->validate('gb82west12345698765432'));
+        // A single changed digit breaks the mod-97 checksum.
+        $this->assertFalse($rule->validate('GB82 WEST 1234 5698 7654 33'));
+        $this->assertFalse($rule->validate('12345678'));
+        $this->assertFalse($rule->validate(''));
+        $this->assertEquals('This field must contain a valid IBAN', $rule->getMessage());
+    }
+
+    public function testValidIsbn(): void
+    {
+        $rule = new ValidIsbn();
+
+        // ISBN-10, with and without hyphens, including an X check digit.
+        $this->assertTrue($rule->validate('0-306-40615-2'));
+        $this->assertTrue($rule->validate('097522980X'));
+        // ISBN-13.
+        $this->assertTrue($rule->validate('978-0-306-40615-7'));
+        $this->assertTrue($rule->validate('9780306406157'));
+        // A single changed digit breaks the checksum.
+        $this->assertFalse($rule->validate('978-0-306-40615-8'));
+        $this->assertFalse($rule->validate('0-306-40615-3'));
+        $this->assertFalse($rule->validate('12345'));
+        $this->assertFalse($rule->validate(''));
+        $this->assertEquals('This field must contain a valid ISBN', $rule->getMessage());
+    }
+
+    public function testValidLuhn(): void
+    {
+        $rule = new ValidLuhn();
+
+        $this->assertTrue($rule->validate('4111 1111 1111 1111'));
+        $this->assertTrue($rule->validate('79927398713'));
+        $this->assertTrue($rule->validate(79927398713));
+        $this->assertFalse($rule->validate('79927398714'));
+        $this->assertFalse($rule->validate('abc'));
+        $this->assertFalse($rule->validate(''));
+        $this->assertEquals('This field must contain a valid number', $rule->getMessage());
+    }
+
+    public function testValidMacAddress(): void
+    {
+        $rule = new ValidMacAddress();
+
+        $this->assertTrue($rule->validate('00:1A:2B:3C:4D:5E'));
+        $this->assertTrue($rule->validate('00-1a-2b-3c-4d-5e'));
+        $this->assertFalse($rule->validate('00:1A:2B:3C:4D'));
+        $this->assertFalse($rule->validate('not-a-mac'));
+        $this->assertFalse($rule->validate(''));
+        $this->assertEquals('This field must contain a valid MAC address', $rule->getMessage());
+    }
+
+    public function testValidPort(): void
+    {
+        $rule = new ValidPort();
+
+        $this->assertTrue($rule->validate(443));
+        $this->assertTrue($rule->validate('8080'));
+        $this->assertTrue($rule->validate(1));
+        $this->assertTrue($rule->validate(65535));
+        $this->assertFalse($rule->validate(0));
+        $this->assertFalse($rule->validate(65536));
+        $this->assertFalse($rule->validate('-1'));
+        $this->assertFalse($rule->validate('http'));
+        $this->assertEquals('This field must contain a valid port number', $rule->getMessage());
+    }
+
+    public function testValidSemver(): void
+    {
+        $rule = new ValidSemver();
+
+        $this->assertTrue($rule->validate('1.2.3'));
+        $this->assertTrue($rule->validate('2.0.0-rc.1'));
+        $this->assertTrue($rule->validate('1.0.0+build.5'));
+        $this->assertTrue($rule->validate('1.0.0-alpha+001'));
+        $this->assertFalse($rule->validate('1.2'));
+        $this->assertFalse($rule->validate('v1.2.3'));
+        $this->assertFalse($rule->validate('01.2.3'));
+        $this->assertFalse($rule->validate(''));
+        $this->assertEquals('This field must contain a valid semantic version', $rule->getMessage());
+    }
+
+    public function testValidFilename(): void
+    {
+        $rule = new ValidFilename();
+
+        $this->assertTrue($rule->validate('report-2026.pdf'));
+        $this->assertTrue($rule->validate('notes.txt'));
+        // Traversal, separators, and specials are rejected.
+        $this->assertFalse($rule->validate('../etc/passwd'));
+        $this->assertFalse($rule->validate('dir/file.txt'));
+        $this->assertFalse($rule->validate('dir\\file.txt'));
+        $this->assertFalse($rule->validate('.'));
+        $this->assertFalse($rule->validate('..'));
+        $this->assertFalse($rule->validate("bad\x00name"));
+        $this->assertFalse($rule->validate(''));
+        $this->assertFalse($rule->validate(str_repeat('a', 256)));
+        $this->assertEquals('This field must contain a valid filename', $rule->getMessage());
+    }
+
+    public function testIsArray(): void
+    {
+        $rule = new IsArray();
+
+        $this->assertTrue($rule->validate(['a', 'b']));
+        $this->assertTrue($rule->validate([]));
+        $this->assertFalse($rule->validate('a,b'));
+        $this->assertFalse($rule->validate(1));
+        $this->assertEquals('This field must be an array', $rule->getMessage());
+    }
+
+    public function testMinCount(): void
+    {
+        $rule = new MinCount(2);
+
+        $this->assertTrue($rule->validate(['a', 'b']));
+        $this->assertTrue($rule->validate(['a', 'b', 'c']));
+        $this->assertFalse($rule->validate(['a']));
+        $this->assertFalse($rule->validate('ab'));
+        $this->assertEquals(2, $rule->getCount());
+        $this->assertEquals('This field must contain at least 2 items', $rule->getMessage());
+    }
+
+    public function testMaxCount(): void
+    {
+        $rule = new MaxCount(2);
+
+        $this->assertTrue($rule->validate(['a', 'b']));
+        $this->assertTrue($rule->validate([]));
+        $this->assertFalse($rule->validate(['a', 'b', 'c']));
+        $this->assertFalse($rule->validate('ab'));
+        $this->assertEquals(2, $rule->getCount());
+        $this->assertEquals('This field must contain at most 2 items', $rule->getMessage());
+    }
+
+    public function testInListEach(): void
+    {
+        $rule = new InListEach(['red', 'green', 'blue']);
+
+        $this->assertTrue($rule->validate(['red', 'blue']));
+        $this->assertTrue($rule->validate([]));
+        $this->assertFalse($rule->validate(['red', 'purple']));
+        $this->assertFalse($rule->validate(['red', ['nested']]));
+        $this->assertFalse($rule->validate('red'));
+        $this->assertEquals(['red', 'green', 'blue'], $rule->getValues());
+        $this->assertEquals('This field may only contain allowed values', $rule->getMessage());
+    }
+
+    public function testMinAge(): void
+    {
+        $rule = new MinAge(18);
+
+        $this->assertTrue($rule->validate(date('Y-m-d', strtotime('-30 years'))));
+        $this->assertTrue($rule->validate(date('Y-m-d', strtotime('-18 years'))));
+        $this->assertFalse($rule->validate(date('Y-m-d', strtotime('-17 years'))));
+        $this->assertFalse($rule->validate(date('Y-m-d', strtotime('+1 day'))));
+        $this->assertFalse($rule->validate('not a date'));
+        $this->assertFalse($rule->validate(''));
+        $this->assertEquals(18, $rule->getYears());
+        $this->assertEquals('This field must be at least 18 years ago', $rule->getMessage());
+    }
+
+    public function testMaxAge(): void
+    {
+        $rule = new MaxAge(65);
+
+        $this->assertTrue($rule->validate(date('Y-m-d', strtotime('-30 years'))));
+        $this->assertTrue($rule->validate(date('Y-m-d', strtotime('-65 years'))));
+        $this->assertFalse($rule->validate(date('Y-m-d', strtotime('-66 years'))));
+        $this->assertFalse($rule->validate('not a date'));
+        $this->assertFalse($rule->validate(''));
+        $this->assertEquals(65, $rule->getYears());
+        $this->assertEquals('This field must be no more than 65 years ago', $rule->getMessage());
     }
 }

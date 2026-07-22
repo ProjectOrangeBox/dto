@@ -1,0 +1,31 @@
+<?php
+
+declare(strict_types=1);
+
+namespace orange\dto\attributes\validations;
+
+use Attribute;
+use orange\dto\DtoAttribute;
+
+#[Attribute(Attribute::TARGET_PROPERTY)]
+/**
+ * Validates that input is a MAC address (colon, hyphen, or dot notation).
+ */
+class ValidMacAddress extends DtoAttribute
+{
+    protected string $errorMsg = '%s must contain a valid MAC address';
+
+    /**
+     * Checks whether the input is a valid MAC address.
+     */
+    public function validate(mixed $input): bool
+    {
+        $bool = false;
+
+        if (is_string($input)) {
+            $bool = filter_var($input, FILTER_VALIDATE_MAC) !== false;
+        }
+
+        return $bool;
+    }
+}
