@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace orange\request\attributes;
+namespace orange\dto\attributes;
 
 use Attribute;
-use orange\request\RequestAttribute;
+use orange\dto\DtoAttribute;
 
 #[Attribute(Attribute::TARGET_PROPERTY)]
 /**
  * Declares the database table and optional connection for a request property.
  */
-class Table extends RequestAttribute
+class Table extends DtoAttribute
 {
     /**
      * Stores the configured table name and database identifier.

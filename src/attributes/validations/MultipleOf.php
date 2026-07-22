@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace orange\request\attributes\validations;
+namespace orange\dto\attributes\validations;
 
 use Attribute;
-use orange\request\RequestAttribute;
+use orange\dto\DtoAttribute;
 
 #[Attribute(Attribute::TARGET_PROPERTY)]
 /**
  * Validates that a numeric value is an exact multiple of a configured step.
  */
-class MultipleOf extends RequestAttribute
+class MultipleOf extends DtoAttribute
 {
     protected string $errorMsg = '%s must be a multiple of %s';
 

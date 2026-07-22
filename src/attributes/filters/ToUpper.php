@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace orange\request\attributes\filters;
+namespace orange\dto\attributes\filters;
 
 use Attribute;
-use orange\request\RequestAttribute;
+use orange\dto\DtoAttribute;
 
 #[Attribute(Attribute::TARGET_PROPERTY)]
 /**
  * Converts string input to upper case.
  */
-class ToUpper extends RequestAttribute
+class ToUpper extends DtoAttribute
 {
     /**
      * Returns the upper-cased string or the original value when not a string.

@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace orange\request\attributes\filters;
+namespace orange\dto\attributes\filters;
 
 use Attribute;
-use orange\request\RequestAttribute;
+use orange\dto\DtoAttribute;
 
 #[Attribute(Attribute::TARGET_PROPERTY)]
 /**
  * Normalizes request input into a boolean value.
  */
-class ToBoolean extends RequestAttribute
+class ToBoolean extends DtoAttribute
 {
     /**
      * Converts booleans, strings, and integers into a normalized boolean result.

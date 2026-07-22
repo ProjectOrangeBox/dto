@@ -2,24 +2,24 @@
 
 declare(strict_types=1);
 
-use orange\request\attributes\filters\CollapseSpaces;
-use orange\request\attributes\filters\DefaultTo;
-use orange\request\attributes\filters\HtmlEncode;
-use orange\request\attributes\filters\NullIfEmpty;
-use orange\request\attributes\filters\OnlyDigits;
-use orange\request\attributes\filters\Round;
-use orange\request\attributes\filters\Slugify;
-use orange\request\attributes\filters\StripTags;
-use orange\request\attributes\filters\StrLimit;
-use orange\request\attributes\filters\ToBoolean;
-use orange\request\attributes\filters\ToFloat;
-use orange\request\attributes\filters\ToInteger;
-use orange\request\attributes\filters\ToLower;
-use orange\request\attributes\filters\ToString;
-use orange\request\attributes\filters\ToUpper;
-use orange\request\attributes\filters\Trim;
-use orange\request\attributes\filters\UcFirst;
-use orange\request\attributes\filters\UcWords;
+use orange\dto\attributes\filters\CollapseSpaces;
+use orange\dto\attributes\filters\DefaultTo;
+use orange\dto\attributes\filters\HtmlEncode;
+use orange\dto\attributes\filters\NullIfEmpty;
+use orange\dto\attributes\filters\OnlyDigits;
+use orange\dto\attributes\filters\Round;
+use orange\dto\attributes\filters\Slugify;
+use orange\dto\attributes\filters\StripTags;
+use orange\dto\attributes\filters\StrLimit;
+use orange\dto\attributes\filters\ToBoolean;
+use orange\dto\attributes\filters\ToFloat;
+use orange\dto\attributes\filters\ToInteger;
+use orange\dto\attributes\filters\ToLower;
+use orange\dto\attributes\filters\ToString;
+use orange\dto\attributes\filters\ToUpper;
+use orange\dto\attributes\filters\Trim;
+use orange\dto\attributes\filters\UcFirst;
+use orange\dto\attributes\filters\UcWords;
 
 final class FilterAttributesTest extends UnitTestHelper
 {

@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace orange\request\attributes\validations;
+namespace orange\dto\attributes\validations;
 
 use Attribute;
-use orange\request\RequestAttribute;
+use orange\dto\DtoAttribute;
 
 #[Attribute(Attribute::TARGET_PROPERTY)]
 /**
@@ -15,7 +15,7 @@ use orange\request\RequestAttribute;
  * (spaces, dashes, dots, parentheses) are stripped before checking for an
  * optional leading '+' followed by 7-15 digits.
  */
-class ValidPhoneNumber extends RequestAttribute
+class ValidPhoneNumber extends DtoAttribute
 {
     protected string $errorMsg = '%s must contain a valid phone number';
 

@@ -6,7 +6,7 @@ declare(strict_types=1);
 error_reporting(E_ALL);
 ini_set('display_errors', '1');
 
-use orange\request\sample\User;
+use orange\dto\sample\User;
 
 require __DIR__ . '/../../../autoload.php';
 

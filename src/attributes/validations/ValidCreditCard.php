@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace orange\request\attributes\validations;
+namespace orange\dto\attributes\validations;
 
 use Attribute;
-use orange\request\RequestAttribute;
+use orange\dto\DtoAttribute;
 
 #[Attribute(Attribute::TARGET_PROPERTY)]
 /**
  * Validates that input is a credit card number passing the Luhn checksum.
  */
-class ValidCreditCard extends RequestAttribute
+class ValidCreditCard extends DtoAttribute
 {
     protected string $errorMsg = '%s must contain a valid credit card number';
 

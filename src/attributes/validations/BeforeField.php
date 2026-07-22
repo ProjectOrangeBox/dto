@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace orange\request\attributes\validations;
+namespace orange\dto\attributes\validations;
 
 use Attribute;
-use orange\request\RequestAttribute;
+use orange\dto\DtoAttribute;
 
 #[Attribute(Attribute::TARGET_PROPERTY)]
 /**
  * Validates that input is a date strictly before another request field's date.
  */
-class BeforeField extends RequestAttribute
+class BeforeField extends DtoAttribute
 {
     protected string $errorMsg = '%s must be before %s';
 
@@ -31,7 +31,7 @@ class BeforeField extends RequestAttribute
         $bool = false;
 
         if (is_string($input) && $input !== '') {
-            $other = $this->request->input($this->field);
+            $other = $this->dto->input($this->field);
 
             if (is_string($other) && $other !== '') {
                 $inputTime = strtotime($input);

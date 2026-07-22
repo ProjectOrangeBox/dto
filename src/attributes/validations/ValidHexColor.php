@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace orange\request\attributes\validations;
+namespace orange\dto\attributes\validations;
 
 use Attribute;
-use orange\request\RequestAttribute;
+use orange\dto\DtoAttribute;
 
 #[Attribute(Attribute::TARGET_PROPERTY)]
 /**
  * Validates that input is a 3- or 6-digit hex color, with an optional leading hash.
  */
-class ValidHexColor extends RequestAttribute
+class ValidHexColor extends DtoAttribute
 {
     protected string $errorMsg = '%s must be a valid hex color';
 

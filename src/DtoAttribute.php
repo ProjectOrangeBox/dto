@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace orange\request;
+namespace orange\dto;
 
 /**
- * Provides shared behavior for request metadata, filters, and validators.
+ * Provides shared behavior for dto metadata, filters, and validators.
  */
-class RequestAttribute
+class DtoAttribute
 {
-    protected Request $request;
+    protected Dto $dto;
     protected string $human = 'This field';
     protected string $errorMsg = '';
 
@@ -24,9 +24,9 @@ class RequestAttribute
     /**
      * Shares the current request instance with the attribute.
      */
-    public function request(Request $request): void
+    public function request(Dto $request): void
     {
-        $this->request = $request;
+        $this->dto = $request;
     }
 
     /**

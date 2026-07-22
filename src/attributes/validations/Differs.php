@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace orange\request\attributes\validations;
+namespace orange\dto\attributes\validations;
 
 use Attribute;
-use orange\request\RequestAttribute;
+use orange\dto\DtoAttribute;
 
 #[Attribute(Attribute::TARGET_PROPERTY)]
 /**
  * Validates that input differs from another request field.
  */
-class Differs extends RequestAttribute
+class Differs extends DtoAttribute
 {
     protected string $errorMsg = '%s must differ from %s';
 
@@ -28,7 +28,7 @@ class Differs extends RequestAttribute
      */
     public function validate(mixed $input): bool
     {
-        return $input !== $this->request->input($this->field);
+        return $input !== $this->dto->input($this->field);
     }
 
     /**

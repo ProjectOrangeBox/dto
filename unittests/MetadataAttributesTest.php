@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-use orange\request\attributes\Column;
-use orange\request\attributes\FieldName;
-use orange\request\attributes\Label;
-use orange\request\attributes\Table;
+use orange\dto\attributes\Column;
+use orange\dto\attributes\FieldName;
+use orange\dto\attributes\Label;
+use orange\dto\attributes\Table;
 
 final class MetadataAttributesTest extends UnitTestHelper
 {

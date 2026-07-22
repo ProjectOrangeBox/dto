@@ -7,7 +7,7 @@ declare(strict_types=1);
  *
  *   php sample/run.php
  *
- * It loads the Composer autoloader for the orange\request\* classes, then loads
+ * It loads the Composer autoloader for the orange\dto\* classes, then loads
  * the sample request classes (which are not part of the package autoload) and
  * runs each one against a valid and an invalid input set.
  */
@@ -16,13 +16,13 @@ declare(strict_types=1);
 error_reporting(E_ALL);
 ini_set('display_errors', '1');
 
-use orange\request\Request;
-use orange\request\sample\ApiSettings;
-use orange\request\sample\Article;
-use orange\request\sample\ContactPreference;
-use orange\request\sample\Payment;
-use orange\request\sample\Registration;
-use orange\request\sample\User;
+use orange\dto\Dto;
+use orange\dto\sample\ApiSettings;
+use orange\dto\sample\Article;
+use orange\dto\sample\ContactPreference;
+use orange\dto\sample\Payment;
+use orange\dto\sample\Registration;
+use orange\dto\sample\User;
 
 require __DIR__ . '/../../../autoload.php';
 
@@ -35,7 +35,7 @@ foreach (['User', 'Registration', 'Article', 'Payment', 'ApiSettings', 'ContactP
  */
 function demo(string $class, string $label, array $input): void
 {
-  /** @var Request $request */
+  /** @var Dto $request */
   $request = new $class($input);
 
   $short = substr((string)strrchr($class, '\\'), 1);

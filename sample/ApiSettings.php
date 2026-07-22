@@ -2,28 +2,28 @@
 
 declare(strict_types=1);
 
-namespace orange\request\sample;
+namespace orange\dto\sample;
 
-use orange\request\Request;
-use orange\request\attributes\Column;
-use orange\request\attributes\FieldName;
-use orange\request\attributes\Label;
-use orange\request\attributes\Table;
-use orange\request\attributes\filters\ToLower;
-use orange\request\attributes\filters\Trim;
-use orange\request\attributes\validations\IsRequired;
-use orange\request\attributes\validations\ValidHexColor;
-use orange\request\attributes\validations\ValidHostname;
-use orange\request\attributes\validations\ValidJson;
-use orange\request\attributes\validations\ValidTimezone;
-use orange\request\attributes\validations\ValidUrl;
-use orange\request\attributes\validations\ValidUuid;
+use orange\dto\Dto;
+use orange\dto\attributes\Column;
+use orange\dto\attributes\FieldName;
+use orange\dto\attributes\Label;
+use orange\dto\attributes\Table;
+use orange\dto\attributes\filters\ToLower;
+use orange\dto\attributes\filters\Trim;
+use orange\dto\attributes\validations\IsRequired;
+use orange\dto\attributes\validations\ValidHexColor;
+use orange\dto\attributes\validations\ValidHostname;
+use orange\dto\attributes\validations\ValidJson;
+use orange\dto\attributes\validations\ValidTimezone;
+use orange\dto\attributes\validations\ValidUrl;
+use orange\dto\attributes\validations\ValidUuid;
 
 /**
  * An integration/settings payload, exercising the newer format validators:
  * URLs, JSON, timezones, UUIDs, hostnames, and hex colors.
  */
-class ApiSettings extends Request
+class ApiSettings extends Dto
 {
     #[Trim]
     #[IsRequired]

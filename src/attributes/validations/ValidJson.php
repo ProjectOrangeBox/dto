@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace orange\request\attributes\validations;
+namespace orange\dto\attributes\validations;
 
 use Attribute;
-use orange\request\RequestAttribute;
+use orange\dto\DtoAttribute;
 
 #[Attribute(Attribute::TARGET_PROPERTY)]
 /**
  * Validates that input contains a well-formed JSON string.
  */
-class ValidJson extends RequestAttribute
+class ValidJson extends DtoAttribute
 {
     protected string $errorMsg = '%s must contain valid JSON';
 

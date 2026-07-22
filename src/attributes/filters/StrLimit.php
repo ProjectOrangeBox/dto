@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace orange\request\attributes\filters;
+namespace orange\dto\attributes\filters;
 
 use Attribute;
-use orange\request\RequestAttribute;
+use orange\dto\DtoAttribute;
 
 #[Attribute(Attribute::TARGET_PROPERTY)]
 /**
  * Truncates string input to a maximum length.
  */
-class StrLimit extends RequestAttribute
+class StrLimit extends DtoAttribute
 {
     /**
      * Stores the maximum string length allowed by the filter.

@@ -2,25 +2,25 @@
 
 declare(strict_types=1);
 
-use orange\request\Request;
-use orange\request\attributes\Column;
-use orange\request\attributes\FieldName;
-use orange\request\attributes\Label;
-use orange\request\attributes\Table;
-use orange\request\attributes\filters\ToInteger;
-use orange\request\attributes\filters\ToString;
-use orange\request\attributes\validations\GreaterThan;
-use orange\request\attributes\validations\IsRequired;
-use orange\request\attributes\validations\LessThan;
-use orange\request\attributes\validations\Matches;
-use orange\request\attributes\validations\MaxLength;
-use orange\request\attributes\validations\MinLength;
+use orange\dto\Dto;
+use orange\dto\attributes\Column;
+use orange\dto\attributes\FieldName;
+use orange\dto\attributes\Label;
+use orange\dto\attributes\Table;
+use orange\dto\attributes\filters\ToInteger;
+use orange\dto\attributes\filters\ToString;
+use orange\dto\attributes\validations\GreaterThan;
+use orange\dto\attributes\validations\IsRequired;
+use orange\dto\attributes\validations\LessThan;
+use orange\dto\attributes\validations\Matches;
+use orange\dto\attributes\validations\MaxLength;
+use orange\dto\attributes\validations\MinLength;
 
 /**
  * Full profile request mirroring the README example, exercising field-name,
  * column, table, label, filter and validation attributes together.
  */
-class ProfileRequest extends Request
+class ProfileRequest extends Dto
 {
     #[IsRequired]
     #[MaxLength(64)]
@@ -52,10 +52,10 @@ class ProfileRequest extends Request
 }
 
 /**
- * Request with a single attributed property and no metadata attributes so the
+ * Dto with a single attributed property and no metadata attributes so the
  * default-to-property-name fallbacks are exercised.
  */
-class MinimalRequest extends Request
+class MinimalRequest extends Dto
 {
     #[IsRequired]
     public string $token;
@@ -65,10 +65,10 @@ class MinimalRequest extends Request
 }
 
 /**
- * Request whose second field validates against the value of the first,
- * exercising the request sharing used by comparison validators.
+ * Dto whose second field validates against the value of the first,
+ * exercising the dto sharing used by comparison validators.
  */
-class ConfirmRequest extends Request
+class ConfirmRequest extends Dto
 {
     #[IsRequired]
     public string $password;
@@ -81,23 +81,23 @@ class ConfirmRequest extends Request
 }
 
 /**
- * A plain PHP attribute that is NOT a RequestAttribute; the engine must ignore it.
+ * A plain PHP attribute that is NOT a DtoAttribute; the engine must ignore it.
  */
 #[Attribute(Attribute::TARGET_PROPERTY)]
-class NotARequestAttribute {}
+class NotADtoAttribute {}
 
 /**
- * Request mixing a non-RequestAttribute attribute with a real validation so the
+ * Request mixing a non-DtoAttribute attribute with a real validation so the
  * engine's "is this one of ours?" filter is exercised.
  */
-class MixedAttributeRequest extends Request
+class MixedAttributeRequest extends Dto
 {
-    #[NotARequestAttribute]
+    #[NotADtoAttribute]
     #[IsRequired]
     public string $field;
 }
 
-final class RequestTest extends UnitTestHelper
+final class DtoTest extends UnitTestHelper
 {
     private function validProfileInput(): array
     {
@@ -252,7 +252,7 @@ final class RequestTest extends UnitTestHelper
 
     public function testEmptyRequestProducesEmptyStructures(): void
     {
-        $request = new class([]) extends Request {};
+        $request = new class([]) extends Dto {};
 
         $this->assertTrue($request->isValid());
         $this->assertSame([], $request->asArray());
@@ -292,7 +292,7 @@ final class RequestTest extends UnitTestHelper
         );
     }
 
-    public function testNonRequestAttributesAreIgnored(): void
+    public function testNonDtoAttributesAreIgnored(): void
     {
         $request = new MixedAttributeRequest(['field' => 'present']);
 

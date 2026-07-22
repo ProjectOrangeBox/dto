@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace orange\request\attributes\filters;
+namespace orange\dto\attributes\filters;
 
 use Attribute;
-use orange\request\RequestAttribute;
+use orange\dto\DtoAttribute;
 
 #[Attribute(Attribute::TARGET_PROPERTY)]
 /**
  * Casts request input to a float.
  */
-class ToFloat extends RequestAttribute
+class ToFloat extends DtoAttribute
 {
     /**
      * Returns the float-cast value, or the original value when casting would

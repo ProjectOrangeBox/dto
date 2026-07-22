@@ -2,26 +2,26 @@
 
 declare(strict_types=1);
 
-namespace orange\request\sample;
+namespace orange\dto\sample;
 
-use orange\request\Request;
-use orange\request\attributes\Column;
-use orange\request\attributes\FieldName;
-use orange\request\attributes\Label;
-use orange\request\attributes\Table;
-use orange\request\attributes\filters\ToFloat;
-use orange\request\attributes\filters\ToUpper;
-use orange\request\attributes\filters\Trim;
-use orange\request\attributes\validations\Between;
-use orange\request\attributes\validations\InList;
-use orange\request\attributes\validations\IsRequired;
-use orange\request\attributes\validations\ValidCreditCard;
+use orange\dto\Dto;
+use orange\dto\attributes\Column;
+use orange\dto\attributes\FieldName;
+use orange\dto\attributes\Label;
+use orange\dto\attributes\Table;
+use orange\dto\attributes\filters\ToFloat;
+use orange\dto\attributes\filters\ToUpper;
+use orange\dto\attributes\filters\Trim;
+use orange\dto\attributes\validations\Between;
+use orange\dto\attributes\validations\InList;
+use orange\dto\attributes\validations\IsRequired;
+use orange\dto\attributes\validations\ValidCreditCard;
 
 /**
  * A payment submission, showing a Luhn-checked card number, a float-cast and
  * range-checked amount, and a normalized currency code.
  */
-class Payment extends Request
+class Payment extends Dto
 {
     #[Trim]
     #[IsRequired]

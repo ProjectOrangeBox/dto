@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace orange\request\attributes\validations;
+namespace orange\dto\attributes\validations;
 
 use Attribute;
-use orange\request\RequestAttribute;
+use orange\dto\DtoAttribute;
 
 #[Attribute(Attribute::TARGET_PROPERTY)]
 /**
  * Validates that input is a well-formed RFC 4122 UUID.
  */
-class ValidUuid extends RequestAttribute
+class ValidUuid extends DtoAttribute
 {
     protected string $errorMsg = '%s must contain a valid UUID';
 

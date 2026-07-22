@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace orange\request\attributes\validations;
+namespace orange\dto\attributes\validations;
 
 use Attribute;
-use orange\request\RequestAttribute;
+use orange\dto\DtoAttribute;
 
 #[Attribute(Attribute::TARGET_PROPERTY)]
 /**
  * Validates that input contains a natural number greater than zero.
  */
-class IsNaturalNoZero extends RequestAttribute
+class IsNaturalNoZero extends DtoAttribute
 {
     protected string $errorMsg = '%s must contain a natural number greater than zero';
 

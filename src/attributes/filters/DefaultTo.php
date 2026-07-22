@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace orange\request\attributes\filters;
+namespace orange\dto\attributes\filters;
 
 use Attribute;
-use orange\request\RequestAttribute;
+use orange\dto\DtoAttribute;
 
 #[Attribute(Attribute::TARGET_PROPERTY)]
 /**
  * Substitutes a default value when input is missing (null or an empty string).
  */
-class DefaultTo extends RequestAttribute
+class DefaultTo extends DtoAttribute
 {
     /**
      * Stores the fallback value to use for empty input.

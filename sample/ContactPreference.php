@@ -2,20 +2,20 @@
 
 declare(strict_types=1);
 
-namespace orange\request\sample;
+namespace orange\dto\sample;
 
-use orange\request\Request;
-use orange\request\attributes\Column;
-use orange\request\attributes\FieldName;
-use orange\request\attributes\Label;
-use orange\request\attributes\Table;
-use orange\request\attributes\filters\NullIfEmpty;
-use orange\request\attributes\filters\Trim;
-use orange\request\attributes\validations\InList;
-use orange\request\attributes\validations\IsRequired;
-use orange\request\attributes\validations\NotInList;
-use orange\request\attributes\validations\RequiredIf;
-use orange\request\attributes\validations\RequiredWith;
+use orange\dto\Dto;
+use orange\dto\attributes\Column;
+use orange\dto\attributes\FieldName;
+use orange\dto\attributes\Label;
+use orange\dto\attributes\Table;
+use orange\dto\attributes\filters\NullIfEmpty;
+use orange\dto\attributes\filters\Trim;
+use orange\dto\attributes\validations\InList;
+use orange\dto\attributes\validations\IsRequired;
+use orange\dto\attributes\validations\NotInList;
+use orange\dto\attributes\validations\RequiredIf;
+use orange\dto\attributes\validations\RequiredWith;
 
 /**
  * A contact-preferences form demonstrating conditional requiredness.
@@ -25,7 +25,7 @@ use orange\request\attributes\validations\RequiredWith;
  * empty. (Format validators like ValidEmail always run, so pair them with these
  * rules only when the field is expected to be filled.)
  */
-class ContactPreference extends Request
+class ContactPreference extends Dto
 {
     #[Trim]
     #[IsRequired]

@@ -2,17 +2,17 @@
 
 declare(strict_types=1);
 
-use orange\request\Request;
-use orange\request\RequestAttribute;
+use orange\dto\Dto;
+use orange\dto\DtoAttribute;
 
-final class RequestAttributeTest extends UnitTestHelper
+final class DtoAttributeTest extends UnitTestHelper
 {
     /**
      * A minimal attribute exposing a template so the base getMessage() logic can be tested.
      */
-    private function makeAttribute(string $message = ''): RequestAttribute
+    private function makeAttribute(string $message = ''): DtoAttribute
     {
-        return new class($message) extends RequestAttribute {
+        return new class($message) extends DtoAttribute {
             protected string $errorMsg = '%s failed the check';
         };
     }
@@ -40,7 +40,7 @@ final class RequestAttributeTest extends UnitTestHelper
 
     public function testGetMessageValuesAreAppendedToTemplate(): void
     {
-        $rule = new class('') extends RequestAttribute {
+        $rule = new class('') extends DtoAttribute {
             protected string $errorMsg = '%s must be at least %s characters';
 
             protected function getMessageValues(): array
@@ -54,14 +54,14 @@ final class RequestAttributeTest extends UnitTestHelper
 
     public function testRequestCanBeShared(): void
     {
-        $request = new class(['field' => 'value']) extends Request {};
+        $request = new class(['field' => 'value']) extends Dto {};
 
-        $rule = new class('') extends RequestAttribute {
+        $rule = new class('') extends DtoAttribute {
             protected string $errorMsg = '%s';
 
             public function seenValue(string $key): mixed
             {
-                return $this->request->input($key);
+                return $this->dto->input($key);
             }
         };
 

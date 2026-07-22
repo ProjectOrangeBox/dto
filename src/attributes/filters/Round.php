@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace orange\request\attributes\filters;
+namespace orange\dto\attributes\filters;
 
 use Attribute;
-use orange\request\RequestAttribute;
+use orange\dto\DtoAttribute;
 
 #[Attribute(Attribute::TARGET_PROPERTY)]
 /**
  * Rounds numeric input to a configured number of decimal places.
  */
-class Round extends RequestAttribute
+class Round extends DtoAttribute
 {
     /**
      * Stores the number of decimal places to round to.

@@ -2,23 +2,23 @@
 
 declare(strict_types=1);
 
-namespace orange\request;
+namespace orange\dto;
 
-use orange\request\RequestAttribute;
+use orange\dto\DtoAttribute;
 use ReflectionClass;
 
 /**
- * Request class for handling form input validation and data management.
+ * Dto class for handling form input validation and data management.
  *
- * This class uses PHP reflection to discover class properties with RequestAttribute
+ * This class uses PHP reflection to discover class properties with DtoAttribute
  * annotations and automatically validates and filters input data based on those rules.
  * It organizes validated data into multiple formats for flexible access patterns.
  *
  * SOLID Principles Applied:
  * - Single Responsibility: Handles only input validation and data organization
- * - Open/Closed: Extensible through RequestAttribute annotations without modifying core logic
+ * - Open/Closed: Extensible through DtoAttribute annotations without modifying core logic
  * - Interface Segregation: Provides multiple access methods (asArray, asTable, asColumns) for client flexibility
- * - Dependency Inversion: Depends on RequestAttribute abstraction rather than concrete validators
+ * - Dependency Inversion: Depends on DtoAttribute abstraction rather than concrete validators
  *
  * @property array $errors Validation errors grouped by field name
  * @property array $fieldSet Mapping of property names to their validation attributes
@@ -26,7 +26,7 @@ use ReflectionClass;
  * @property array $array Validated data in simple associative array format
  * @property array $keys Mapping of raw property names to their resolved field names
  */
-class Request
+class Dto
 {
   protected array $errors = [];
   protected array $fieldSet = [];
@@ -35,9 +35,9 @@ class Request
   protected array $keys = [];
 
   /**
-   * Initializes a Request instance with input data and processes field attributes.
+   * Initializes a Dto instance with input data and processes field attributes.
    *
-   * Uses reflection to discover properties with RequestAttribute annotations,
+   * Uses reflection to discover properties with DtoAttribute annotations,
    * then processes each property through its validation rules.
    *
    * @param array $input The input data to be validated and processed
@@ -54,7 +54,7 @@ class Request
       foreach ($property->getAttributes() as $attribute) {
         $attributeReflection = new ReflectionClass($attribute->getName());
 
-        if ($attributeReflection->isSubclassOf(RequestAttribute::class)) {
+        if ($attributeReflection->isSubclassOf(DtoAttribute::class)) {
           $attributes[$attributeReflection->getShortName()] = $attribute->newInstance();
         }
       }

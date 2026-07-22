@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace orange\request\attributes\validations;
+namespace orange\dto\attributes\validations;
 
 use Attribute;
-use orange\request\RequestAttribute;
+use orange\dto\DtoAttribute;
 
 #[Attribute(Attribute::TARGET_PROPERTY)]
 /**
  * Validates that a numeric value is less than or equal to a threshold.
  */
-class LessThanEqualTo extends RequestAttribute
+class LessThanEqualTo extends DtoAttribute
 {
     protected string $errorMsg = '%s must be less than or equal to %s';
 

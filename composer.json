@@ -1,15 +1,16 @@
 {
-  "name": "orange/request",
-  "description": "Attribute-driven request input validation and filtering for PHP 8.3+",
+  "name": "orange/dto",
+  "description": "Attribute-driven DTOs with input validation and filtering for PHP 8.3+",
   "type": "library",
   "keywords": [
-    "request",
+    "dto",
+    "data-transfer-object",
     "validation",
     "filter",
     "attributes",
     "input"
   ],
-  "homepage": "https://github.com/ProjectOrangeBox/request",
+  "homepage": "https://github.com/ProjectOrangeBox/dto",
   "license": "MIT",
   "authors": [
     {
@@ -18,8 +19,8 @@
     }
   ],
   "support": {
-    "issues": "https://github.com/ProjectOrangeBox/request/issues",
-    "source": "https://github.com/ProjectOrangeBox/request"
+    "issues": "https://github.com/ProjectOrangeBox/dto/issues",
+    "source": "https://github.com/ProjectOrangeBox/dto"
   },
   "require": {
     "php": ">=8.3",
@@ -32,7 +33,7 @@
   },
   "autoload": {
     "psr-4": {
-      "orange\\request\\": "src/"
+      "orange\\dto\\": "src/"
     }
   },
   "scripts": {

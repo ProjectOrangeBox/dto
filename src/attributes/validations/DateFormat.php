@@ -2,17 +2,17 @@
 
 declare(strict_types=1);
 
-namespace orange\request\attributes\validations;
+namespace orange\dto\attributes\validations;
 
 use Attribute;
 use DateTimeImmutable;
-use orange\request\RequestAttribute;
+use orange\dto\DtoAttribute;
 
 #[Attribute(Attribute::TARGET_PROPERTY)]
 /**
  * Validates that input matches an exact date format.
  */
-class DateFormat extends RequestAttribute
+class DateFormat extends DtoAttribute
 {
     protected string $errorMsg = '%s must be a valid date in the format %s';
 

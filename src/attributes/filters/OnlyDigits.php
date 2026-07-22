@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace orange\request\attributes\filters;
+namespace orange\dto\attributes\filters;
 
 use Attribute;
-use orange\request\RequestAttribute;
+use orange\dto\DtoAttribute;
 
 #[Attribute(Attribute::TARGET_PROPERTY)]
 /**
  * Strips every non-digit character from string input.
  */
-class OnlyDigits extends RequestAttribute
+class OnlyDigits extends DtoAttribute
 {
     /**
      * Returns the digits-only string or the original value when not a string.

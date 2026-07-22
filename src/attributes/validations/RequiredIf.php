@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace orange\request\attributes\validations;
+namespace orange\dto\attributes\validations;
 
 use Attribute;
-use orange\request\RequestAttribute;
+use orange\dto\DtoAttribute;
 
 #[Attribute(Attribute::TARGET_PROPERTY)]
 /**
  * Validates that input is present when another field equals a given value.
  */
-class RequiredIf extends RequestAttribute
+class RequiredIf extends DtoAttribute
 {
     protected string $errorMsg = '%s is required';
 
@@ -28,7 +28,7 @@ class RequiredIf extends RequestAttribute
      */
     public function validate(mixed $input): bool
     {
-        if ((string)$this->request->input($this->field) === $this->value) {
+        if ((string)$this->dto->input($this->field) === $this->value) {
             return $this->isFilled($input);
         }
 

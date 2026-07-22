@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace orange\request\attributes\validations;
+namespace orange\dto\attributes\validations;
 
 use Attribute;
-use orange\request\RequestAttribute;
+use orange\dto\DtoAttribute;
 
 #[Attribute(Attribute::TARGET_PROPERTY)]
 /**
  * Validates that input is a date strictly after a fixed date (or 'now').
  */
-class After extends RequestAttribute
+class After extends DtoAttribute
 {
     protected string $errorMsg = '%s must be after %s';
 

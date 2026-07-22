@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace orange\request\attributes\validations;
+namespace orange\dto\attributes\validations;
 
 use Attribute;
-use orange\request\RequestAttribute;
+use orange\dto\DtoAttribute;
 
 #[Attribute(Attribute::TARGET_PROPERTY)]
 /**
  * Validates that input contains only alpha and dash characters.
  */
-class AlphaDash extends RequestAttribute
+class AlphaDash extends DtoAttribute
 {
     protected string $errorMsg = '%s may only contain alpha-numeric characters, underscores, and dashes';
 

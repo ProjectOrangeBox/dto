@@ -2,67 +2,67 @@
 
 declare(strict_types=1);
 
-use orange\request\Request;
-use orange\request\attributes\validations\Accepted;
-use orange\request\attributes\validations\After;
-use orange\request\attributes\validations\AfterField;
-use orange\request\attributes\validations\Alpha;
-use orange\request\attributes\validations\AlphaDash;
-use orange\request\attributes\validations\AlphaNumeric;
-use orange\request\attributes\validations\AlphaNumericSpaces;
-use orange\request\attributes\validations\Before;
-use orange\request\attributes\validations\BeforeField;
-use orange\request\attributes\validations\Between;
-use orange\request\attributes\validations\BetweenLength;
-use orange\request\attributes\validations\Contains;
-use orange\request\attributes\validations\DateFormat;
-use orange\request\attributes\validations\Decimal;
-use orange\request\attributes\validations\Differs;
-use orange\request\attributes\validations\EndsWith;
-use orange\request\attributes\validations\Equals;
-use orange\request\attributes\validations\ExactLength;
-use orange\request\attributes\validations\GreaterThan;
-use orange\request\attributes\validations\GreaterThanEqualTo;
-use orange\request\attributes\validations\InList;
-use orange\request\attributes\validations\Integer as IntegerValidation;
-use orange\request\attributes\validations\IsNatural;
-use orange\request\attributes\validations\IsNaturalNoZero;
-use orange\request\attributes\validations\IsRequired;
-use orange\request\attributes\validations\LessThan;
-use orange\request\attributes\validations\LessThanEqualTo;
-use orange\request\attributes\validations\Matches;
-use orange\request\attributes\validations\MaxLength;
-use orange\request\attributes\validations\MinLength;
-use orange\request\attributes\validations\MultipleOf;
-use orange\request\attributes\validations\NotEquals;
-use orange\request\attributes\validations\NotInList;
-use orange\request\attributes\validations\Numeric;
-use orange\request\attributes\validations\RegexMatch;
-use orange\request\attributes\validations\RequiredIf;
-use orange\request\attributes\validations\RequiredWith;
-use orange\request\attributes\validations\Slug;
-use orange\request\attributes\validations\StartsWith;
-use orange\request\attributes\validations\ValidBase64;
-use orange\request\attributes\validations\ValidCountryCode;
-use orange\request\attributes\validations\ValidCreditCard;
-use orange\request\attributes\validations\ValidCurrencyCode;
-use orange\request\attributes\validations\ValidDate;
-use orange\request\attributes\validations\ValidEmail;
-use orange\request\attributes\validations\ValidEmails;
-use orange\request\attributes\validations\ValidHexColor;
-use orange\request\attributes\validations\ValidHostname;
-use orange\request\attributes\validations\ValidIp;
-use orange\request\attributes\validations\ValidJson;
-use orange\request\attributes\validations\ValidPhoneNumber;
-use orange\request\attributes\validations\ValidTimezone;
-use orange\request\attributes\validations\ValidUrl;
-use orange\request\attributes\validations\ValidUuid;
+use orange\dto\Dto;
+use orange\dto\attributes\validations\Accepted;
+use orange\dto\attributes\validations\After;
+use orange\dto\attributes\validations\AfterField;
+use orange\dto\attributes\validations\Alpha;
+use orange\dto\attributes\validations\AlphaDash;
+use orange\dto\attributes\validations\AlphaNumeric;
+use orange\dto\attributes\validations\AlphaNumericSpaces;
+use orange\dto\attributes\validations\Before;
+use orange\dto\attributes\validations\BeforeField;
+use orange\dto\attributes\validations\Between;
+use orange\dto\attributes\validations\BetweenLength;
+use orange\dto\attributes\validations\Contains;
+use orange\dto\attributes\validations\DateFormat;
+use orange\dto\attributes\validations\Decimal;
+use orange\dto\attributes\validations\Differs;
+use orange\dto\attributes\validations\EndsWith;
+use orange\dto\attributes\validations\Equals;
+use orange\dto\attributes\validations\ExactLength;
+use orange\dto\attributes\validations\GreaterThan;
+use orange\dto\attributes\validations\GreaterThanEqualTo;
+use orange\dto\attributes\validations\InList;
+use orange\dto\attributes\validations\Integer as IntegerValidation;
+use orange\dto\attributes\validations\IsNatural;
+use orange\dto\attributes\validations\IsNaturalNoZero;
+use orange\dto\attributes\validations\IsRequired;
+use orange\dto\attributes\validations\LessThan;
+use orange\dto\attributes\validations\LessThanEqualTo;
+use orange\dto\attributes\validations\Matches;
+use orange\dto\attributes\validations\MaxLength;
+use orange\dto\attributes\validations\MinLength;
+use orange\dto\attributes\validations\MultipleOf;
+use orange\dto\attributes\validations\NotEquals;
+use orange\dto\attributes\validations\NotInList;
+use orange\dto\attributes\validations\Numeric;
+use orange\dto\attributes\validations\RegexMatch;
+use orange\dto\attributes\validations\RequiredIf;
+use orange\dto\attributes\validations\RequiredWith;
+use orange\dto\attributes\validations\Slug;
+use orange\dto\attributes\validations\StartsWith;
+use orange\dto\attributes\validations\ValidBase64;
+use orange\dto\attributes\validations\ValidCountryCode;
+use orange\dto\attributes\validations\ValidCreditCard;
+use orange\dto\attributes\validations\ValidCurrencyCode;
+use orange\dto\attributes\validations\ValidDate;
+use orange\dto\attributes\validations\ValidEmail;
+use orange\dto\attributes\validations\ValidEmails;
+use orange\dto\attributes\validations\ValidHexColor;
+use orange\dto\attributes\validations\ValidHostname;
+use orange\dto\attributes\validations\ValidIp;
+use orange\dto\attributes\validations\ValidJson;
+use orange\dto\attributes\validations\ValidPhoneNumber;
+use orange\dto\attributes\validations\ValidTimezone;
+use orange\dto\attributes\validations\ValidUrl;
+use orange\dto\attributes\validations\ValidUuid;
 
 final class ValidationAttributesTest extends UnitTestHelper
 {
-    protected function makeRequest(array $input): Request
+    protected function makeRequest(array $input): Dto
     {
-        return new class($input) extends Request {
+        return new class($input) extends Dto {
         };
     }
 

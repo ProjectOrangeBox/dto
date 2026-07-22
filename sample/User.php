@@ -2,23 +2,23 @@
 
 declare(strict_types=1);
 
-namespace orange\request\sample;
+namespace orange\dto\sample;
 
-use orange\request\attributes\Column;
-use orange\request\attributes\FieldName;
-use orange\request\attributes\filters\ToInteger;
-use orange\request\attributes\filters\ToString;
-use orange\request\attributes\Label;
-use orange\request\attributes\Table;
-use orange\request\attributes\validations\GreaterThan;
-use orange\request\attributes\validations\InList;
-use orange\request\attributes\validations\IsRequired;
-use orange\request\attributes\validations\LessThan;
-use orange\request\attributes\validations\MaxLength;
-use orange\request\attributes\validations\MinLength;
-use orange\request\Request;
+use orange\dto\attributes\Column;
+use orange\dto\attributes\FieldName;
+use orange\dto\attributes\filters\ToInteger;
+use orange\dto\attributes\filters\ToString;
+use orange\dto\attributes\Label;
+use orange\dto\attributes\Table;
+use orange\dto\attributes\validations\GreaterThan;
+use orange\dto\attributes\validations\InList;
+use orange\dto\attributes\validations\IsRequired;
+use orange\dto\attributes\validations\LessThan;
+use orange\dto\attributes\validations\MaxLength;
+use orange\dto\attributes\validations\MinLength;
+use orange\dto\Dto;
 
-class User extends Request
+class User extends Dto
 {
   #[IsRequired]
   #[MaxLength(64)]

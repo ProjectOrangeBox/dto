@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace orange\request\attributes;
+namespace orange\dto\attributes;
 
 use Attribute;
-use orange\request\RequestAttribute;
+use orange\dto\DtoAttribute;
 
 #[Attribute(Attribute::TARGET_PROPERTY)]
 /**
  * Declares the human-friendly label for a request property.
  */
-class Label extends RequestAttribute
+class Label extends DtoAttribute
 {
     /**
      * Stores the configured display label.

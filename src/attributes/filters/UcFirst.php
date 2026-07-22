@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace orange\request\attributes\filters;
+namespace orange\dto\attributes\filters;
 
 use Attribute;
-use orange\request\RequestAttribute;
+use orange\dto\DtoAttribute;
 
 #[Attribute(Attribute::TARGET_PROPERTY)]
 /**
  * Converts the first letter of string input to upper case, leaving the rest untouched.
  */
-class UcFirst extends RequestAttribute
+class UcFirst extends DtoAttribute
 {
     /**
      * Returns the string with its first letter upper-cased, or the original value when not a string.

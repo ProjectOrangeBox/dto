@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace orange\request\attributes\validations;
+namespace orange\dto\attributes\validations;
 
 use Attribute;
-use orange\request\RequestAttribute;
+use orange\dto\DtoAttribute;
 
 #[Attribute(Attribute::TARGET_PROPERTY)]
 /**
  * Validates that a string exceeds a minimum length.
  */
-class MinLength extends RequestAttribute
+class MinLength extends DtoAttribute
 {
     protected string $errorMsg = '%s must be greater than %s characters';
 

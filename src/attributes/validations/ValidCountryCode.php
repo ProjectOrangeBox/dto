@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace orange\request\attributes\validations;
+namespace orange\dto\attributes\validations;
 
 use Attribute;
-use orange\request\RequestAttribute;
+use orange\dto\DtoAttribute;
 
 #[Attribute(Attribute::TARGET_PROPERTY)]
 /**
  * Validates that input is a valid ISO 3166-1 alpha-2 country code.
  */
-class ValidCountryCode extends RequestAttribute
+class ValidCountryCode extends DtoAttribute
 {
     protected string $errorMsg = '%s must be a valid country code';
 

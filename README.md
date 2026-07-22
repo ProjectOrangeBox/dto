@@ -1,9 +1,10 @@
-# orange/request
+# orange/dto
 
-`orange/request` is a small, dependency-free PHP 8.3+ package for describing and
-validating request input using PHP attributes.
+`orange/dto` is a small, dependency-free PHP 8.3+ package for building
+validated, filtered data transfer objects (DTOs) from raw input arrays using
+PHP attributes.
 
-You declare a request class that extends `orange\request\Request`, annotate each
+You declare a DTO class that extends `orange\dto\Dto`, annotate each
 public property with attributes, and the package will:
 
 - read each value from the incoming input array (by field name)
@@ -23,7 +24,7 @@ public property with attributes, and the package will:
 ## Installation
 
 ```sh
-composer require orange/request
+composer require orange/dto
 ```
 
 ## Quick Start
@@ -35,20 +36,20 @@ declare(strict_types=1);
 
 namespace app\request;
 
-use orange\request\Request;
-use orange\request\attributes\Column;
-use orange\request\attributes\FieldName;
-use orange\request\attributes\Label;
-use orange\request\attributes\Table;
-use orange\request\attributes\filters\ToInteger;
-use orange\request\attributes\filters\ToString;
-use orange\request\attributes\filters\Trim;
-use orange\request\attributes\validations\Between;
-use orange\request\attributes\validations\IsRequired;
-use orange\request\attributes\validations\MaxLength;
-use orange\request\attributes\validations\MinLength;
+use orange\dto\Dto;
+use orange\dto\attributes\Column;
+use orange\dto\attributes\FieldName;
+use orange\dto\attributes\Label;
+use orange\dto\attributes\Table;
+use orange\dto\attributes\filters\ToInteger;
+use orange\dto\attributes\filters\ToString;
+use orange\dto\attributes\filters\Trim;
+use orange\dto\attributes\validations\Between;
+use orange\dto\attributes\validations\IsRequired;
+use orange\dto\attributes\validations\MaxLength;
+use orange\dto\attributes\validations\MinLength;
 
-class UserRequest extends Request
+class UserRequest extends Dto
 {
     #[Trim]
     #[ToString]
@@ -98,7 +99,7 @@ if ($request->isValid()) {
 ## How It Works
 
 When you construct a request, it uses reflection to find every public property
-that carries one or more `orange\request` attributes. For each such property it:
+that carries one or more `orange\dto` attributes. For each such property it:
 
 1. resolves the **field name** (input key), **column**, **table**, and **label**
    from the metadata attributes (falling back to the property name);
@@ -109,7 +110,7 @@ that carries one or more `orange\request` attributes. For each such property it:
    property and records it in the array / column / table outputs. If anything
    failed, the messages are collected under the field name instead.
 
-Properties with no `orange\request` attributes are ignored entirely.
+Properties with no `orange\dto` attributes are ignored entirely.
 
 ### Attribute order matters
 
@@ -344,7 +345,7 @@ output a literal percent sign.
 
 ## Using It With the Orange Framework
 
-`orange/request` has no dependency on `orange/framework` — a `Request` subclass
+`orange/dto` has no dependency on `orange/framework` — a `Dto` subclass
 just needs a plain array. The only framework touchpoint is *where that array
 comes from*, which is the framework's `Input` service
 (`orange\framework\interfaces\InputInterface`, wired up as `$this->input` by
@@ -433,7 +434,7 @@ class UserController extends BaseController
 }
 ```
 
-The container resolves each service once per request, so the `Request` is
+The container resolves each service once per request, so the `Dto` is
 built exactly once, from that request's own input — the same lifecycle as the
 `config`, `input`, and `output` services `BaseController` already attaches.
 
@@ -470,7 +471,7 @@ class UserApiController extends JsonController
 }
 ```
 
-Request subclasses have no required location — put them wherever your module
+Dto subclasses have no required location — put them wherever your module
 organizes its code, e.g. `application/<module>/requests/` or
 `api/<module>/requests/`, following the same HMVC layout as the rest of the
 module.

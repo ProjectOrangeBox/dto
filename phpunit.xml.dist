@@ -10,7 +10,7 @@
          failOnNotice="true"
          failOnWarning="true">
     <testsuites>
-        <testsuite name="orange/request">
+        <testsuite name="orange/dto">
             <directory>unittests</directory>
         </testsuite>
     </testsuites>

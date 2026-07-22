@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace orange\request\attributes\validations;
+namespace orange\dto\attributes\validations;
 
 use Attribute;
-use orange\request\RequestAttribute;
+use orange\dto\DtoAttribute;
 
 #[Attribute(Attribute::TARGET_PROPERTY)]
 /**
  * Validates that input begins with a configured substring.
  */
-class StartsWith extends RequestAttribute
+class StartsWith extends DtoAttribute
 {
     protected string $errorMsg = '%s must start with %s';
 

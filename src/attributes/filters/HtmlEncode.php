@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace orange\request\attributes\filters;
+namespace orange\dto\attributes\filters;
 
 use Attribute;
-use orange\request\RequestAttribute;
+use orange\dto\DtoAttribute;
 
 #[Attribute(Attribute::TARGET_PROPERTY)]
 /**
  * Encodes HTML special characters so the value is safe to output.
  */
-class HtmlEncode extends RequestAttribute
+class HtmlEncode extends DtoAttribute
 {
     /**
      * Returns the HTML-encoded string or the original value when not a string.
