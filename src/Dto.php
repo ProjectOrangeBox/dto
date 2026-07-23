@@ -49,6 +49,7 @@ class Dto implements JsonSerializable
      *         'table' => string,       // db table (Table attribute or property name)
      *         'label' => string,       // human name (Label attribute or property name)
      *         'dbCast' => ?string,     // db-shape cast target (DbCast attribute) or null
+     *         'dtoArray' => ?string,   // child Dto class (IsArray with a class) or null
      *         'rules' => [[rule class, constructor args, has validate(), has filter()], ...],
      *     ]],
      * ]]
@@ -98,6 +99,48 @@ class Dto implements JsonSerializable
     public function errors(): array
     {
         return $this->errors;
+    }
+
+    /**
+     * Returns all validation errors including nested dto-array detail,
+     * dot-keyed by input field name and element key.
+     *
+     * errors() deliberately rolls a dto-array's child failures up into a
+     * single parent message; this is the one-call export for consumers that
+     * need the full picture without knowing the shape — a JSON API error
+     * body, a log entry. The parent messages come first, then each invalid
+     * child's own errors keyed '{field}.{key}.{childField}', recursing
+     * through any deeper dto-arrays:
+     *
+     *     [
+     *         'lines'       => ['Order lines has 1 or more errors'],
+     *         'lines.1.sku' => ['Sku is required'],
+     *     ]
+     *
+     * A dot-flat shape rather than a nested one so the result JSON-encodes
+     * as a plain object of message lists — no mixed list/map arrays.
+     *
+     * @return array An associative array of dot-keyed field names to arrays of error messages
+     */
+    public function allErrors(): array
+    {
+        $errors = $this->errors;
+
+        foreach (self::$blueprints[static::class]['properties'] as $property => $meta) {
+            // only dto-array properties can carry nested errors — and a value
+            // that never was an array leaves the property unassigned
+            if ($meta['dtoArray'] === null || !isset($this->$property)) {
+                continue;
+            }
+
+            foreach ($this->$property as $key => $child) {
+                foreach ($child->allErrors() as $childField => $messages) {
+                    $errors[$meta['fieldName'] . '.' . $key . '.' . $childField] = $messages;
+                }
+            }
+        }
+
+        return $errors;
     }
 
     /**
@@ -472,6 +515,7 @@ class Dto implements JsonSerializable
             // keep only the attributes that actually validate or filter;
             // pure metadata attributes never need instantiating again
             $rules = [];
+            $dtoArray = null;
 
             foreach ($attributes as $attribute) {
                 $ruleClass = $attribute->getName();
@@ -481,6 +525,14 @@ class Dto implements JsonSerializable
                 if ($validates || $filters) {
                     $rules[] = [$ruleClass, $attribute->getArguments(), $validates, $filters];
                 }
+
+                // a rule that maps elements into child DTOs (IsArray with a
+                // class) flags this as a dto-array property — nested output,
+                // no db shapes. Instantiating also verifies the class here,
+                // at first construction, not silently at input time
+                if (method_exists($ruleClass, 'getDtoClass')) {
+                    $dtoArray = $attribute->newInstance()->getDtoClass();
+                }
             }
 
             $blueprint['properties'][$propertyName] = [
@@ -489,6 +541,7 @@ class Dto implements JsonSerializable
                 'table' => $table,
                 'label' => $label,
                 'dbCast' => $dbCast,
+                'dtoArray' => $dtoArray,
                 'rules' => $rules,
             ];
         }
@@ -523,6 +576,12 @@ class Dto implements JsonSerializable
         // as absent; presence rules (see validatesAbsent()) always run
         $provided = $value !== null && $value !== '' && $value !== [];
 
+        // an absent dto-array normalizes to [] so the typed array property
+        // and the flattened output stay well-formed either way
+        if (!$provided && $meta['dtoArray'] !== null) {
+            $value = [];
+        }
+
         // assume the value is valid until a validation rule fails
         $isValid = true;
 
@@ -549,7 +608,12 @@ class Dto implements JsonSerializable
         // if the value is valid assign it to the class and add it to the db array properties
         if ($isValid) {
             // assign the value to the class and add it to the db array properties
-            $this->whenValid($property, $value, $meta['table'], $meta['column'], $meta['dbCast']);
+            $this->whenValid($property, $value, $meta['table'], $meta['column'], $meta['dbCast'], $meta['dtoArray']);
+        } elseif ($meta['dtoArray'] !== null && is_array($value)) {
+            // a failed dto-array still assigns the child DTOs to the property
+            // so the caller can extract it and read each child's own errors()
+            // — but never to the output shapes, which only carry valid data
+            $this->$property = $value;
         }
     }
 
@@ -562,17 +626,31 @@ class Dto implements JsonSerializable
      * keep the domain value while asColumns()/asTable() carry the storage
      * value (e.g. a bool property stored as 0/1).
      *
+     * A dto-array property keeps the child Dto objects on the property while
+     * asArray()/json carry each child flattened through its own asArray() —
+     * and it never reaches the db shapes, because a nested structure has no
+     * single-row table/column representation. Extract the children and call
+     * asTable()/asColumns() on each one individually to persist them.
+     *
      * @param string $property The property name to assign the value to
      * @param mixed $value The validated value to store
      * @param string $table The database table name
      * @param string $column The database column name
      * @param ?string $dbCast Scalar cast target for the db shapes, or null for none
+     * @param ?string $dtoArray Child Dto class for dto-array properties, or null
      * @return void
      */
-    protected function whenValid($property, $value, $table, $column, $dbCast = null): void
+    protected function whenValid($property, $value, $table, $column, $dbCast = null, $dtoArray = null): void
     {
         // assign to the class
         $this->$property = $value;
+
+        // dto-array: nested plain arrays in the output, no db shapes
+        if ($dtoArray !== null) {
+            $this->array[$property] = array_map(static fn (Dto $child): array => $child->asArray(), $value);
+
+            return;
+        }
 
         // assign to the array for easy access
         $this->array[$property] = $value;

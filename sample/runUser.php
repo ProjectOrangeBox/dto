@@ -14,29 +14,29 @@ require __DIR__ . '/../../../autoload.php';
 require_once __DIR__ . '/User.php';
 
 $input = [
-  'fullname' => 'Johnny Appleseed',
-  'age' => '23',
-  'clr' => 'Orange',
-  'rgb' => 'red',
-  'notRequired' => true,
+    'fullname' => 'Johnny Appleseed',
+    'age' => '23',
+    'clr' => 'Orange',
+    'rgb' => 'red',
+    'notRequired' => true,
 ];
 
 $request = new User($input);
 
 if ($request->isValid()) {
-  echo $request->fieldname('name') . ' ' . $request->name . PHP_EOL;
-  echo $request->fieldname('age') . ' ' . $request->age . PHP_EOL;
-  echo $request->fieldname('color') . ' ' . $request->color . PHP_EOL;
-  echo $request->fieldname('rgb') . ' ' . $request->rgb . PHP_EOL;
-  echo $request->fieldname('notRequired') . ' ' . $request->notRequired . PHP_EOL;
+    echo $request->fieldname('name') . ' ' . $request->name . PHP_EOL;
+    echo $request->fieldname('age') . ' ' . $request->age . PHP_EOL;
+    echo $request->fieldname('color') . ' ' . $request->color . PHP_EOL;
+    echo $request->fieldname('rgb') . ' ' . $request->rgb . PHP_EOL;
+    echo $request->fieldname('notRequired') . ' ' . $request->notRequired . PHP_EOL;
 
-  var_dump($request->validInputKeys());
-  var_dump($request->validKeys());
+    var_dump($request->validInputKeys());
+    var_dump($request->validKeys());
 
-  var_dump($request->asTable());
+    var_dump($request->asTable());
 } else {
-  var_dump($request->validInputKeys());
-  var_dump($request->validKeys());
+    var_dump($request->validInputKeys());
+    var_dump($request->validKeys());
 
-  var_dump($request->errors());
+    var_dump($request->errors());
 }

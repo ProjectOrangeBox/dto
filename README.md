@@ -134,6 +134,7 @@ public int $qty;
 | --- | --- |
 | `isValid(): bool` | `true` when there are no errors |
 | `errors(): array` | `['fieldName' => ['message', ...], ...]` |
+| `allErrors(): array` | `errors()` plus [nested DTO](#nested-dtos) detail, dot-keyed: `['lines.1.sku' => [...], ...]` |
 | `asArray(): array` | valid values keyed by **property name** |
 | `asColumns(bool $withoutPrimary = false): array` | valid values keyed by **column name**; `true` drops the `#[IsPrimary]` column |
 | `asTable(false\|string $table = false, bool $withoutPrimary = false): array` | valid values grouped by **table** (all tables, or one named table); `true` drops the `#[IsPrimary]` column from its table |
@@ -388,7 +389,7 @@ the array itself:
 
 | Attribute | Passes when the value… |
 | --- | --- |
-| `#[IsArray]` | is an array |
+| `#[IsArray(?string $dtoClass = null)]` | is an array; given a Dto class, each element is also built and validated as a child DTO (see [Nested DTOs](#nested-dtos)) |
 | `#[MinCount(int $count)]` | is an array with at least `$count` elements |
 | `#[MaxCount(int $count)]` | is an array with at most `$count` elements |
 | `#[InListEach(array $values)]` | is an array whose every element is one of `$values` |
@@ -403,6 +404,122 @@ the array itself:
 | `#[ValidPhoneNumber]` | a plausible phone number — a loose check, not strict E.164 (formatting characters are stripped, then 7–15 digits with an optional leading `+` are required) |
 | `#[ValidCountryCode]` | a valid ISO 3166-1 alpha-2 country code (case-insensitive) |
 | `#[ValidCurrencyCode]` | a valid ISO 4217 alpha-3 currency code (case-insensitive) |
+
+## Nested DTOs
+
+`#[IsArray(Child::class)]` turns a property into an array of child DTOs. Each
+element of the input value must itself be an array; each one is passed to
+`new Child($element)` — built, filtered, and validated exactly like a
+stand-alone DTO — with the input keys preserved:
+
+```php
+class LineItem extends Dto
+{
+    #[IsRequired]
+    #[ToString]
+    #[Column('sku')]
+    #[Table('order_lines')]
+    #[Label('Sku')]
+    public protected(set) string $sku;
+
+    #[IsRequired]
+    #[ToInteger]
+    #[GreaterThan(0)]
+    #[Column('qty')]
+    #[Table('order_lines')]
+    #[Label('Qty')]
+    public protected(set) int $qty;
+}
+
+class OrderRequest extends Dto
+{
+    #[IsRequired]
+    #[IsArray(LineItem::class)]
+    #[MinCount(1)]
+    #[MaxCount(10)]
+    #[Label('Lines')]
+    public protected(set) array $lines;
+}
+
+$request = new OrderRequest([
+    'lines' => [
+        ['sku' => 'A1', 'qty' => '2'],
+        ['sku' => 'B2', 'qty' => 1],
+    ],
+]);
+
+$request->lines[0];        // a LineItem instance
+$request->lines[0]->qty;   // 2 (filtered by the child's own ToInteger)
+```
+
+`#[MinCount]` / `#[MaxCount]` bound the element count as usual, and the class
+argument is verified up front — a non-Dto class throws at the owning class's
+first construction.
+
+### Child errors roll up as one parent error
+
+A child failure never floods the parent's `errors()`. The parent reports a
+single message per problem, most fundamental first:
+
+| Situation | Parent error |
+| --- | --- |
+| the value is not an array | `Lines must be an array` |
+| an element is not itself an array | `Lines contains a non-object entry` |
+| one or more children failed validation | `Lines has 1 or more errors` |
+
+For the detail, extract the property — it is assigned the child DTOs even
+when they failed, so each child can be inspected like any other DTO:
+
+```php
+if (!$request->isValid()) {
+    foreach ($request->lines as $index => $line) {
+        if (!$line->isValid()) {
+            $lineErrors = $line->errors(); // a normal DTO errors() array
+        }
+    }
+}
+```
+
+When the consumer doesn't know the shape — a generic API error body, a log
+entry — `allErrors()` exports the full tree in one call, dot-keyed by input
+field name and element key, recursing through any deeper dto-arrays:
+
+```php
+$request->allErrors();
+// [
+//     'lines'       => ['Lines has 1 or more errors'],
+//     'lines.1.sku' => ['Sku is required'],
+//     'lines.1.qty' => ['Quantity must be between 1 and 99'],
+// ]
+```
+
+The output shapes are unaffected by this extraction escape hatch: an invalid
+dto-array field is omitted from `asArray()` / JSON like any other invalid
+field.
+
+### Output
+
+`asArray()` (and therefore `json_encode()`, `only()`, `except()`) flattens
+each child through its own `asArray()`, so the result is nested plain arrays
+all the way down — no objects to unwrap:
+
+```php
+$request->asArray();
+// ['lines' => [['sku' => 'A1', 'qty' => 2], ['sku' => 'B2', 'qty' => 1]]]
+```
+
+The db shapes are the exception: a nested structure has no single-row
+table/column representation, so `asColumns()` / `asTable()` on the parent
+skip dto-array properties entirely. Persist the children individually:
+
+```php
+foreach ($request->lines as $line) {
+    $db->insert('order_lines', $line->asColumns());
+}
+```
+
+An absent optional dto-array normalizes to `[]`, so the typed `array`
+property is always safe to iterate.
 
 ## Custom Error Messages
 
@@ -560,7 +677,9 @@ class UserApiController extends JsonController
         $request = new CreateUserRequest($this->input->request());
 
         if (!$request->isValid()) {
-            $this->data['errors'] = $request->errors();
+            // allErrors() over errors() so nested dto-array detail reaches
+            // the client instead of a single "has 1 or more errors" rollup
+            $this->data['errors'] = $request->allErrors();
 
             return $this->response('validationFail'); // 406
         }
@@ -582,8 +701,10 @@ module.
 ## Samples
 
 The `sample/` directory contains runnable request classes covering the full
-attribute set — sign-up, CMS article, payment, API settings, and conditional
-contact preferences. Run them all against valid and invalid input:
+attribute set — sign-up, CMS article, payment, API settings, conditional
+contact preferences, and an order with nested dto-array line items
+(`Order` / `OrderLine`, including extracting child errors after a failure).
+Run them all against valid and invalid input:
 
 ```sh
 php sample/run.php
