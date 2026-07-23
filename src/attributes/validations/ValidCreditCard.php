@@ -25,7 +25,7 @@ class ValidCreditCard extends DtoAttribute
         if (is_string($input) || is_int($input)) {
             // Strip common separators before validating the digits.
             $number = preg_replace('/\D/', '', (string)$input);
-            $length = strlen($number);
+            $length = strlen((string) $number);
 
             if ($number !== '' && $length >= 13 && $length <= 19) {
                 $bool = $this->passesLuhn($number);

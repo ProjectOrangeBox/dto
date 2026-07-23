@@ -19,7 +19,7 @@ class DateFormat extends DtoAttribute
     /**
      * Stores the required date format and optional custom message.
      */
-    public function __construct(private string $format = 'Y-m-d', string $message = '')
+    public function __construct(private readonly string $format = 'Y-m-d', string $message = '')
     {
         parent::__construct($message);
     }
@@ -52,6 +52,7 @@ class DateFormat extends DtoAttribute
     /**
      * Supplies the format for the formatted error message.
      */
+    #[\Override]
     protected function getMessageValues(): array
     {
         return [$this->format];

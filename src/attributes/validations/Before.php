@@ -18,7 +18,7 @@ class Before extends DtoAttribute
     /**
      * Stores the comparison date (anything strtotime() understands, e.g. 'now') and optional custom message.
      */
-    public function __construct(private string $date, string $message = '')
+    public function __construct(private readonly string $date, string $message = '')
     {
         parent::__construct($message);
     }
@@ -51,6 +51,7 @@ class Before extends DtoAttribute
     /**
      * Supplies the comparison date for the formatted error message.
      */
+    #[\Override]
     protected function getMessageValues(): array
     {
         return [$this->date];

@@ -19,7 +19,7 @@ class RequiredWithout extends DtoAttribute
     /**
      * Stores the companion field and optional custom message.
      */
-    public function __construct(private string $field, string $message = '')
+    public function __construct(private readonly string $field, string $message = '')
     {
         parent::__construct($message);
     }

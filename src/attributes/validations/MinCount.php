@@ -18,7 +18,7 @@ class MinCount extends DtoAttribute
     /**
      * Stores the minimum element count and optional custom message.
      */
-    public function __construct(private int $count, string $message = '')
+    public function __construct(private readonly int $count, string $message = '')
     {
         parent::__construct($message);
     }
@@ -42,6 +42,7 @@ class MinCount extends DtoAttribute
     /**
      * Supplies the count for the error message.
      */
+    #[\Override]
     protected function getMessageValues(): array
     {
         return [$this->count];

@@ -48,6 +48,7 @@ class LessThan extends DtoAttribute
     /**
      * Supplies the comparison value for the formatted error message.
      */
+    #[\Override]
     protected function getMessageValues(): array
     {
         return [$this->value];

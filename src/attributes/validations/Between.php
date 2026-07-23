@@ -18,7 +18,7 @@ class Between extends DtoAttribute
     /**
      * Stores the inclusive bounds and optional custom message.
      */
-    public function __construct(private int|float $min, private int|float $max, string $message = '')
+    public function __construct(private readonly int|float $min, private readonly int|float $max, string $message = '')
     {
         parent::__construct($message);
     }
@@ -58,6 +58,7 @@ class Between extends DtoAttribute
     /**
      * Supplies the bounds for the formatted error message.
      */
+    #[\Override]
     protected function getMessageValues(): array
     {
         return [$this->min, $this->max];

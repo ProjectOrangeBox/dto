@@ -24,7 +24,7 @@ class ValidEmails extends DtoAttribute
 
         if (is_string($input) && $input !== '') {
             $bool = true;
-            $emails = array_map('trim', explode(',', $input));
+            $emails = array_map(trim(...), explode(',', $input));
 
             foreach ($emails as $email) {
                 if ($email === '' || filter_var($email, FILTER_VALIDATE_EMAIL) === false) {

@@ -18,7 +18,7 @@ class ValidIp extends DtoAttribute
     /**
      * Stores the IP version filter and optional custom message.
      */
-    public function __construct(private string $version = '', string $message = '')
+    public function __construct(private readonly string $version = '', string $message = '')
     {
         parent::__construct($message);
     }

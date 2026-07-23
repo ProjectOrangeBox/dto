@@ -16,7 +16,9 @@ class Round extends DtoAttribute
     /**
      * Stores the number of decimal places to round to.
      */
-    public function __construct(private int $precision = 0) {}
+    public function __construct(private readonly int $precision = 0)
+    {
+    }
 
     /**
      * Returns the rounded float or the original value when not numeric.

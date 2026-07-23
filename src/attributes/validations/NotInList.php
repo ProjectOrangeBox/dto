@@ -18,7 +18,7 @@ class NotInList extends DtoAttribute
     /**
      * Stores the disallowed values and optional custom message.
      */
-    public function __construct(private array $values, string $message = '')
+    public function __construct(private readonly array $values, string $message = '')
     {
         parent::__construct($message);
     }
@@ -31,7 +31,7 @@ class NotInList extends DtoAttribute
         $bool = false;
 
         if (is_scalar($input)) {
-            $bool = !in_array((string)$input, array_map('strval', $this->values), true);
+            $bool = !in_array((string)$input, array_map(strval(...), $this->values), true);
         }
 
         return $bool;

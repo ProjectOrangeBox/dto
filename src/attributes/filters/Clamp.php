@@ -17,7 +17,9 @@ class Clamp extends DtoAttribute
     /**
      * Stores the inclusive minimum and maximum.
      */
-    public function __construct(private int|float $min, private int|float $max) {}
+    public function __construct(private readonly int|float $min, private readonly int|float $max)
+    {
+    }
 
     /**
      * Returns the value clamped to [min, max] or the original value when not numeric.

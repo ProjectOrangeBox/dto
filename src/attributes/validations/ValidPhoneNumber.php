@@ -29,7 +29,7 @@ class ValidPhoneNumber extends DtoAttribute
         if (is_string($input) && $input !== '') {
             $stripped = preg_replace('/[\s\-.()]+/', '', $input);
 
-            $bool = preg_match('/^\+?[0-9]{7,15}$/', $stripped) === 1;
+            $bool = preg_match('/^\+?[0-9]{7,15}$/', (string) $stripped) === 1;
         }
 
         return $bool;

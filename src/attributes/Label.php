@@ -16,7 +16,9 @@ class Label extends DtoAttribute
     /**
      * Stores the configured display label.
      */
-    public function __construct(protected string $name = '') {}
+    public function __construct(protected string $name = '')
+    {
+    }
 
     /**
      * Returns the configured display label.

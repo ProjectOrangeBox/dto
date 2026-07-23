@@ -16,7 +16,9 @@ class FieldName extends DtoAttribute
     /**
      * Stores the configured field name.
      */
-    public function __construct(protected string $name = '') {}
+    public function __construct(protected string $name = '')
+    {
+    }
 
     /**
      * Returns the configured field name.

@@ -18,7 +18,7 @@ class EndsWith extends DtoAttribute
     /**
      * Stores the required suffix and optional custom message.
      */
-    public function __construct(private string $needle, string $message = '')
+    public function __construct(private readonly string $needle, string $message = '')
     {
         parent::__construct($message);
     }
@@ -48,6 +48,7 @@ class EndsWith extends DtoAttribute
     /**
      * Supplies the suffix for the formatted error message.
      */
+    #[\Override]
     protected function getMessageValues(): array
     {
         return [$this->needle];

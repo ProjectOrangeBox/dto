@@ -18,7 +18,7 @@ class BeforeField extends DtoAttribute
     /**
      * Stores the comparison field name and optional custom message.
      */
-    public function __construct(private string $field, string $message = '')
+    public function __construct(private readonly string $field, string $message = '')
     {
         parent::__construct($message);
     }
@@ -55,6 +55,7 @@ class BeforeField extends DtoAttribute
     /**
      * Supplies the field name for the formatted error message.
      */
+    #[\Override]
     protected function getMessageValues(): array
     {
         return [$this->field];

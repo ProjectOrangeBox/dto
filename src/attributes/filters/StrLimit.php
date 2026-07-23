@@ -16,7 +16,9 @@ class StrLimit extends DtoAttribute
     /**
      * Stores the maximum string length allowed by the filter.
      */
-    public function __construct(private int $length) {}
+    public function __construct(private readonly int $length)
+    {
+    }
 
     /**
      * Returns the original value or the truncated string result.

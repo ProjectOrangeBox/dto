@@ -19,7 +19,7 @@ class RequiredUnless extends DtoAttribute
     /**
      * Stores the trigger field, its exempting value, and optional custom message.
      */
-    public function __construct(private string $field, private string $value, string $message = '')
+    public function __construct(private readonly string $field, private readonly string $value, string $message = '')
     {
         parent::__construct($message);
     }

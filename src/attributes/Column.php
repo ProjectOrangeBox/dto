@@ -16,7 +16,9 @@ class Column extends DtoAttribute
     /**
      * Stores the configured column name.
      */
-    public function __construct(protected string $name = '') {}
+    public function __construct(protected string $name = '')
+    {
+    }
 
     /**
      * Returns the configured column name.

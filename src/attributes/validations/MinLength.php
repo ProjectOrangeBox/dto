@@ -18,7 +18,7 @@ class MinLength extends DtoAttribute
     /**
      * Stores the minimum length and optional custom message.
      */
-    public function __construct(private int $length, string $message = '')
+    public function __construct(private readonly int $length, string $message = '')
     {
         parent::__construct($message);
     }
@@ -48,6 +48,7 @@ class MinLength extends DtoAttribute
     /**
      * Supplies the minimum length for the formatted error message.
      */
+    #[\Override]
     protected function getMessageValues(): array
     {
         return [$this->length];

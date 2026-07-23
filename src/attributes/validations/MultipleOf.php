@@ -18,7 +18,7 @@ class MultipleOf extends DtoAttribute
     /**
      * Stores the required step and optional custom message.
      */
-    public function __construct(private int|float $step, string $message = '')
+    public function __construct(private readonly int|float $step, string $message = '')
     {
         parent::__construct($message);
     }
@@ -53,6 +53,7 @@ class MultipleOf extends DtoAttribute
     /**
      * Supplies the step for the formatted error message.
      */
+    #[\Override]
     protected function getMessageValues(): array
     {
         return [$this->step];

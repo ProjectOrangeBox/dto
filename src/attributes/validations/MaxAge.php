@@ -21,7 +21,7 @@ class MaxAge extends DtoAttribute
     /**
      * Stores the maximum age in years and optional custom message.
      */
-    public function __construct(private int $years, string $message = '')
+    public function __construct(private readonly int $years, string $message = '')
     {
         parent::__construct($message);
     }
@@ -47,6 +47,7 @@ class MaxAge extends DtoAttribute
     /**
      * Supplies the years for the error message.
      */
+    #[\Override]
     protected function getMessageValues(): array
     {
         return [$this->years];

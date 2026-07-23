@@ -20,7 +20,7 @@ class InListEach extends DtoAttribute
     /**
      * Stores the allowed values and optional custom message.
      */
-    public function __construct(private array $values, string $message = '')
+    public function __construct(private readonly array $values, string $message = '')
     {
         parent::__construct($message);
     }
@@ -34,15 +34,8 @@ class InListEach extends DtoAttribute
             return false;
         }
 
-        $allowed = array_map('strval', $this->values);
-
-        foreach ($input as $element) {
-            if (!is_scalar($element) || !in_array((string)$element, $allowed, true)) {
-                return false;
-            }
-        }
-
-        return true;
+        $allowed = array_map(strval(...), $this->values);
+        return array_all($input, fn($element) => !(!is_scalar($element) || !in_array((string)$element, $allowed, true)));
     }
 
     /**

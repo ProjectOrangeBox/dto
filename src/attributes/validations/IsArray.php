@@ -37,7 +37,7 @@ class IsArray extends DtoAttribute
      * The class is verified here — a typo throws at the owning class's first
      * construction (compile time), not silently at input time.
      */
-    public function __construct(private ?string $dtoClass = null, string $message = '')
+    public function __construct(private readonly ?string $dtoClass = null, string $message = '')
     {
         if ($dtoClass !== null && !is_subclass_of($dtoClass, Dto::class)) {
             throw new InvalidArgumentException($dtoClass . ' is not a ' . Dto::class . ' subclass.');

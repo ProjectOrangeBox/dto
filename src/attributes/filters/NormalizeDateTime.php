@@ -18,7 +18,9 @@ class NormalizeDateTime extends DtoAttribute
     /**
      * Stores the canonical output format.
      */
-    public function __construct(private string $format = 'Y-m-d H:i:s') {}
+    public function __construct(private readonly string $format = 'Y-m-d H:i:s')
+    {
+    }
 
     /**
      * Returns the reformatted date string, or the original value when not a

@@ -18,7 +18,7 @@ class MaxLength extends DtoAttribute
     /**
      * Stores the maximum length and optional custom message.
      */
-    public function __construct(private int $length, string $message = '')
+    public function __construct(private readonly int $length, string $message = '')
     {
         parent::__construct($message);
     }
@@ -48,6 +48,7 @@ class MaxLength extends DtoAttribute
     /**
      * Supplies the maximum length for the formatted error message.
      */
+    #[\Override]
     protected function getMessageValues(): array
     {
         return [$this->length];

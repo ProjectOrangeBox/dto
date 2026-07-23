@@ -17,7 +17,9 @@ class Pad extends DtoAttribute
     /**
      * Stores the target length and the padding string.
      */
-    public function __construct(private int $length, private string $padString = '0') {}
+    public function __construct(private readonly int $length, private readonly string $padString = '0')
+    {
+    }
 
     /**
      * Returns the padded string or the original value when not a string or integer.

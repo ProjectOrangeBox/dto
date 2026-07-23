@@ -16,7 +16,9 @@ class DefaultTo extends DtoAttribute
     /**
      * Stores the fallback value to use for empty input.
      */
-    public function __construct(private mixed $default = null) {}
+    public function __construct(private readonly mixed $default = null)
+    {
+    }
 
     /**
      * Returns the configured default when the input is null or an empty string.

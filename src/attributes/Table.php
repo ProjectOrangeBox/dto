@@ -16,7 +16,9 @@ class Table extends DtoAttribute
     /**
      * Stores the configured table name and database identifier.
      */
-    public function __construct(protected string $name = '', private string $database = '') {}
+    public function __construct(protected string $name = '', private readonly string $database = '')
+    {
+    }
 
     /**
      * Returns the configured table name.

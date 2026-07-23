@@ -26,7 +26,7 @@ class Slugify extends DtoAttribute
             $lower = mb_strtolower($input, 'UTF-8');
 
             // Replace anything that isn't a letter or digit with a hyphen, then trim the ends.
-            $output = trim(preg_replace('/[^a-z0-9]+/', '-', $lower), '-');
+            $output = trim((string) preg_replace('/[^a-z0-9]+/', '-', $lower), '-');
         }
 
         return $output;

@@ -18,7 +18,7 @@ class Equals extends DtoAttribute
     /**
      * Stores the expected value and optional custom message.
      */
-    public function __construct(private mixed $value, string $message = '')
+    public function __construct(private readonly mixed $value, string $message = '')
     {
         parent::__construct($message);
     }
@@ -48,6 +48,7 @@ class Equals extends DtoAttribute
     /**
      * Supplies the expected value for the formatted error message.
      */
+    #[\Override]
     protected function getMessageValues(): array
     {
         return [$this->value];

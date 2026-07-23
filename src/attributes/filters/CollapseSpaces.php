@@ -23,7 +23,7 @@ class CollapseSpaces extends DtoAttribute
 
         // Only normalize whitespace when the input is a string.
         if (is_string($input)) {
-            $output = trim(preg_replace('/\s+/', ' ', $input));
+            $output = trim((string) preg_replace('/\s+/', ' ', $input));
         }
 
         return $output;

@@ -18,7 +18,7 @@ class StartsWith extends DtoAttribute
     /**
      * Stores the required prefix and optional custom message.
      */
-    public function __construct(private string $needle, string $message = '')
+    public function __construct(private readonly string $needle, string $message = '')
     {
         parent::__construct($message);
     }
@@ -48,6 +48,7 @@ class StartsWith extends DtoAttribute
     /**
      * Supplies the prefix for the formatted error message.
      */
+    #[\Override]
     protected function getMessageValues(): array
     {
         return [$this->needle];

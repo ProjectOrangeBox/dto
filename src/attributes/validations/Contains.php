@@ -18,7 +18,7 @@ class Contains extends DtoAttribute
     /**
      * Stores the required substring and optional custom message.
      */
-    public function __construct(private string $needle, string $message = '')
+    public function __construct(private readonly string $needle, string $message = '')
     {
         parent::__construct($message);
     }
@@ -48,6 +48,7 @@ class Contains extends DtoAttribute
     /**
      * Supplies the substring for the formatted error message.
      */
+    #[\Override]
     protected function getMessageValues(): array
     {
         return [$this->needle];

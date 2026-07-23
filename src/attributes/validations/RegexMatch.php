@@ -18,7 +18,7 @@ class RegexMatch extends DtoAttribute
     /**
      * Stores the regex pattern and optional custom message.
      */
-    public function __construct(private string $pattern, string $message = '')
+    public function __construct(private readonly string $pattern, string $message = '')
     {
         parent::__construct($message);
     }
