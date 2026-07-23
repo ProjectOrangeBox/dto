@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use orange\dto\attributes\Column;
+use orange\dto\attributes\DbCast;
 use orange\dto\attributes\FieldName;
 use orange\dto\attributes\Label;
 use orange\dto\attributes\Table;
@@ -65,5 +66,20 @@ final class MetadataAttributesTest extends UnitTestHelper
 
         $this->assertEquals('', $attribute->getName());
         $this->assertEquals('', $attribute->getDatabase());
+    }
+
+    public function testDbCastAcceptsEachScalarTarget(): void
+    {
+        foreach (DbCast::TARGETS as $target) {
+            $this->assertEquals($target, new DbCast($target)->getName());
+        }
+    }
+
+    public function testDbCastRejectsAnUnknownTarget(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage("got 'array'");
+
+        new DbCast('array');
     }
 }

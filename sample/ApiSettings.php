@@ -32,7 +32,7 @@ class ApiSettings extends Dto
     #[Column('webhook_url')]
     #[Table('api_settings')]
     #[Label('Webhook URL')]
-    public string $webhookUrl;
+    public protected(set) string $webhookUrl;
 
     #[IsRequired]
     #[ValidJson]
@@ -40,7 +40,7 @@ class ApiSettings extends Dto
     #[Column('config')]
     #[Table('api_settings')]
     #[Label('Config')]
-    public string $config;
+    public protected(set) string $config;
 
     #[Trim]
     #[IsRequired]
@@ -48,7 +48,7 @@ class ApiSettings extends Dto
     #[Column('timezone')]
     #[Table('api_settings')]
     #[Label('Timezone')]
-    public string $timezone;
+    public protected(set) string $timezone;
 
     #[Trim]
     #[IsRequired]
@@ -57,7 +57,7 @@ class ApiSettings extends Dto
     #[Column('api_key')]
     #[Table('api_settings')]
     #[Label('API key')]
-    public string $apiKey;
+    public protected(set) string $apiKey;
 
     #[Trim]
     #[ToLower]
@@ -66,7 +66,7 @@ class ApiSettings extends Dto
     #[Column('host')]
     #[Table('api_settings')]
     #[Label('Host')]
-    public string $host;
+    public protected(set) string $host;
 
     #[Trim]
     #[IsRequired]
@@ -75,5 +75,5 @@ class ApiSettings extends Dto
     #[Column('brand_color')]
     #[Table('api_settings')]
     #[Label('Brand color')]
-    public string $brandColor;
+    public protected(set) string $brandColor;
 }

@@ -30,7 +30,7 @@ class Payment extends Dto
     #[Column('card_number')]
     #[Table('payments')]
     #[Label('Card number')]
-    public string $cardNumber;
+    public protected(set) string $cardNumber;
 
     #[IsRequired]
     #[ToFloat]
@@ -38,7 +38,7 @@ class Payment extends Dto
     #[Column('amount')]
     #[Table('payments')]
     #[Label('Amount')]
-    public float $amount;
+    public protected(set) float $amount;
 
     #[Trim]
     #[ToUpper]
@@ -47,5 +47,5 @@ class Payment extends Dto
     #[Column('currency')]
     #[Table('payments')]
     #[Label('Currency')]
-    public string $currency;
+    public protected(set) string $currency;
 }

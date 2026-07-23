@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 use orange\dto\Dto;
 use orange\dto\attributes\Column;
+use orange\dto\attributes\DbCast;
 use orange\dto\attributes\FieldName;
 use orange\dto\attributes\IsPrimary;
 use orange\dto\attributes\Label;
 use orange\dto\attributes\Table;
+use orange\dto\attributes\filters\NullIfEmpty;
 use orange\dto\attributes\filters\ToInteger;
 use orange\dto\attributes\filters\ToString;
 use orange\dto\attributes\validations\GreaterThan;
@@ -522,5 +524,237 @@ final class DtoTest extends UnitTestHelper
         };
 
         $this->assertSame('b_pk', $request->primary());
+    }
+
+    public function testProtectedSetPropertyIsAssignedByTheEngine(): void
+    {
+        $request = new class(['name' => 'Don']) extends Dto {
+            #[IsRequired]
+            public protected(set) string $name;
+        };
+
+        $this->assertTrue($request->isValid());
+        $this->assertSame('Don', $request->name);
+    }
+
+    public function testProtectedSetPropertyRejectsExternalWrites(): void
+    {
+        $request = new class(['name' => 'Don']) extends Dto {
+            #[IsRequired]
+            public protected(set) string $name;
+        };
+
+        $this->expectException(\Error::class);
+        $this->expectExceptionMessageMatches('/Cannot modify protected\(set\) property/');
+
+        $request->name = 'overwritten';
+    }
+
+    public function testOnlyReturnsJustTheRequestedProperties(): void
+    {
+        $request = new ProfileRequest($this->validProfileInput());
+
+        $this->assertSame([
+            'name' => 'Johnny Appleseed',
+            'color' => 'Orange',
+        ], $request->only('name', 'color'));
+    }
+
+    public function testOnlySkipsInvalidAndUnknownProperties(): void
+    {
+        $request = new ProfileRequest(['name' => 'Johnny Appleseed']);
+
+        $this->assertSame(['name' => 'Johnny Appleseed'], $request->only('name', 'age', 'missing'));
+    }
+
+    public function testExceptDropsTheGivenProperties(): void
+    {
+        $request = new ConfirmRequest([
+            'password' => 'secret',
+            'password_confirm' => 'secret',
+        ]);
+
+        $this->assertSame(['password' => 'secret'], $request->except('confirm'));
+    }
+
+    public function testPrimaryValueReturnsTheValidatedValue(): void
+    {
+        $request = new class(['id' => '42']) extends Dto {
+            #[IsPrimary]
+            #[ToInteger]
+            #[FieldName('id')]
+            public int $record_id;
+        };
+
+        $this->assertSame(42, $request->primaryValue());
+    }
+
+    public function testPrimaryValueIsNullWithoutIsPrimary(): void
+    {
+        $request = new MinimalRequest(['token' => 'abc']);
+
+        $this->assertNull($request->primaryValue());
+    }
+
+    public function testPrimaryValueIsNullWhenThePrimaryFailsValidation(): void
+    {
+        $request = new class([]) extends Dto {
+            #[IsPrimary]
+            #[IsRequired]
+            public string $id;
+        };
+
+        $this->assertFalse($request->isValid());
+        $this->assertNull($request->primaryValue());
+    }
+
+    public function testJsonEncodeEmitsOnlyValidatedData(): void
+    {
+        $request = new ProfileRequest($this->validProfileInput());
+
+        $this->assertSame(
+            json_encode(['name' => 'Johnny Appleseed', 'age' => 23, 'color' => 'Orange']),
+            json_encode($request)
+        );
+    }
+
+    public function testJsonEncodeOmitsInvalidFields(): void
+    {
+        $request = new ProfileRequest(['name' => 'Johnny Appleseed']);
+
+        $this->assertSame(json_encode(['name' => 'Johnny Appleseed']), json_encode($request));
+    }
+
+    public function testJsonEncodeSerializesListsOfDtos(): void
+    {
+        $requests = [
+            new MinimalRequest(['token' => 'first']),
+            new MinimalRequest(['token' => 'second']),
+        ];
+
+        $this->assertSame(
+            json_encode([['token' => 'first'], ['token' => 'second']]),
+            json_encode($requests)
+        );
+    }
+
+    public function testAsColumnsWithoutPrimaryDropsThePrimaryColumn(): void
+    {
+        $request = new class(['id' => '7', 'name' => 'Don']) extends Dto {
+            #[IsPrimary]
+            #[ToInteger]
+            #[Column('records_pk')]
+            public int $id;
+
+            #[IsRequired]
+            public string $name;
+        };
+
+        $this->assertSame(['records_pk' => 7, 'name' => 'Don'], $request->asColumns());
+        $this->assertSame(['name' => 'Don'], $request->asColumns(withoutPrimary: true));
+    }
+
+    public function testAsColumnsWithoutPrimaryUsesTheTrueColumnKey(): void
+    {
+        // without #[Column], primary() falls back to the FieldName while the
+        // asColumns() key falls back to the property name — removal must
+        // target the real column key, not primary()'s value
+        $request = new class(['record_id' => '5']) extends Dto {
+            #[IsPrimary]
+            #[FieldName('record_id')]
+            #[ToInteger]
+            public int $id;
+        };
+
+        $this->assertSame('record_id', $request->primary());
+        $this->assertSame(['id' => 5], $request->asColumns());
+        $this->assertSame([], $request->asColumns(withoutPrimary: true));
+    }
+
+    public function testAsColumnsWithoutPrimaryIsANoOpWhenNoneIsTagged(): void
+    {
+        $request = new MinimalRequest(['token' => 'abc']);
+
+        $this->assertSame($request->asColumns(), $request->asColumns(withoutPrimary: true));
+    }
+
+    public function testAsTableWithoutPrimaryDropsItFromItsTableOnly(): void
+    {
+        $request = new class(['id' => '7', 'name' => 'Don', 'note' => 'hi']) extends Dto {
+            #[IsPrimary]
+            #[ToInteger]
+            #[Table('records')]
+            public int $id;
+
+            #[IsRequired]
+            #[Table('records')]
+            public string $name;
+
+            #[IsRequired]
+            #[Table('audit')]
+            public string $note;
+        };
+
+        $this->assertSame(
+            ['records' => ['name' => 'Don'], 'audit' => ['note' => 'hi']],
+            $request->asTable(withoutPrimary: true)
+        );
+        $this->assertSame(['name' => 'Don'], $request->asTable('records', true));
+
+        // and the unflagged shape is untouched
+        $this->assertSame(['id' => 7, 'name' => 'Don'], $request->asTable('records'));
+    }
+
+    public function testDbCastAppliesToDbShapesOnly(): void
+    {
+        $request = new class(['flag' => true]) extends Dto {
+            #[DbCast('int')]
+            public bool $flag;
+        };
+
+        // domain value everywhere the application looks
+        $this->assertTrue($request->flag);
+        $this->assertSame(['flag' => true], $request->asArray());
+        $this->assertSame(json_encode(['flag' => true]), json_encode($request));
+
+        // storage value in the db shapes
+        $this->assertSame(['flag' => 1], $request->asColumns());
+        $this->assertSame(['flag' => ['flag' => 1]], $request->asTable());
+    }
+
+    public function testDbCastNeverCastsNull(): void
+    {
+        $request = new class(['when' => null]) extends Dto {
+            #[NullIfEmpty]
+            #[DbCast('string')]
+            public ?string $when = null;
+        };
+
+        $this->assertTrue($request->isValid());
+        $this->assertNull($request->asColumns()['when']);
+    }
+
+    public function testDbCastRejectsAnUnknownTargetAtCompileTime(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage("got 'datetime'");
+
+        new class([]) extends Dto {
+            #[DbCast('datetime')]
+            public string $when;
+        };
+    }
+
+    public function testDebugInfoCuratesValidityDataAndErrors(): void
+    {
+        $request = new ProfileRequest(['name' => 'Johnny Appleseed']);
+
+        $debug = $request->__debugInfo();
+
+        $this->assertSame(['valid', 'data', 'errors'], array_keys($debug));
+        $this->assertFalse($debug['valid']);
+        $this->assertSame(['name' => 'Johnny Appleseed'], $debug['data']);
+        $this->assertArrayHasKey('age', $debug['errors']);
+        $this->assertArrayHasKey('clr', $debug['errors']);
     }
 }

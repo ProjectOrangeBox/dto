@@ -37,7 +37,7 @@ class Registration extends Dto
     #[Column('username')]
     #[Table('users')]
     #[Label('Username')]
-    public string $username;
+    public protected(set) string $username;
 
     #[Trim]
     #[ToLower]
@@ -47,14 +47,14 @@ class Registration extends Dto
     #[Column('email')]
     #[Table('users')]
     #[Label('Email')]
-    public string $email;
+    public protected(set) string $email;
 
     #[IsRequired]
     #[BetweenLength(8, 72)]
     #[Column('password')]
     #[Table('users')]
     #[Label('Password')]
-    public string $password;
+    public protected(set) string $password;
 
     // Every valid field is included in asArray()/asColumns()/asTable(). This
     // confirmation field has no #[Table]/#[Column], so it defaults to its own
@@ -63,7 +63,7 @@ class Registration extends Dto
     #[Matches('password')]
     #[FieldName('password_confirmation')]
     #[Label('Password confirmation')]
-    public string $passwordConfirmation;
+    public protected(set) string $passwordConfirmation;
 
     #[IsRequired]
     #[ToInteger]
@@ -71,5 +71,5 @@ class Registration extends Dto
     #[Column('age')]
     #[Table('users')]
     #[Label('Age')]
-    public int $age;
+    public protected(set) int $age;
 }

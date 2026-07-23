@@ -1,11 +1,11 @@
 # orange/dto
 
-`orange/dto` is a small, dependency-free PHP 8.3+ package for building
+`orange/dto` is a small, dependency-free PHP 8.4+ package for building
 validated, filtered data transfer objects (DTOs) from raw input arrays using
 PHP attributes.
 
 You declare a DTO class that extends `orange\dto\Dto`, annotate each
-public property with attributes, and the package will:
+publicly readable property with attributes, and the package will:
 
 - read each value from the incoming input array (by field name)
 - validate every value against the rules you declared
@@ -18,7 +18,7 @@ public property with attributes, and the package will:
 
 ## Requirements
 
-- PHP `>= 8.3`
+- PHP `>= 8.4`
 - Extensions: `ext-filter`, `ext-json`, `ext-mbstring` (declared in `composer.json`)
 
 ## Installation
@@ -59,7 +59,7 @@ class UserRequest extends Dto
     #[Column('name')]
     #[Table('user')]
     #[Label('Name')]
-    public string $name;
+    public protected(set) string $name;
 
     #[ToInteger]
     #[IsRequired]
@@ -67,7 +67,7 @@ class UserRequest extends Dto
     #[Column('age')]
     #[Table('user')]
     #[Label('Age')]
-    public int $age;
+    public protected(set) int $age;
 
     #[Trim]
     #[ToString]
@@ -78,7 +78,7 @@ class UserRequest extends Dto
     #[Column('fav_color')]  // store as column "fav_color"
     #[Table('user')]
     #[Label('Favorite Color')]
-    public string $color;
+    public protected(set) string $color;
 }
 
 $request = new UserRequest([
@@ -98,8 +98,10 @@ if ($request->isValid()) {
 
 ## How It Works
 
-When you construct a request, it uses reflection to find every public property
-that carries one or more `orange\dto` attributes. For each such property it:
+When you construct a request, it uses reflection to find every publicly
+*readable* property that carries one or more `orange\dto` attributes — plain
+`public` and asymmetric `public protected(set)` both qualify. For each such
+property it:
 
 1. resolves the **field name** (input key), **column**, **table**, and **label**
    from the metadata attributes (falling back to the property name);
@@ -133,11 +135,42 @@ public int $qty;
 | `isValid(): bool` | `true` when there are no errors |
 | `errors(): array` | `['fieldName' => ['message', ...], ...]` |
 | `asArray(): array` | valid values keyed by **property name** |
-| `asColumns(): array` | valid values keyed by **column name** |
-| `asTable(false\|string $table = false): array` | valid values grouped by **table** (all tables, or one named table) |
+| `asColumns(bool $withoutPrimary = false): array` | valid values keyed by **column name**; `true` drops the `#[IsPrimary]` column |
+| `asTable(false\|string $table = false, bool $withoutPrimary = false): array` | valid values grouped by **table** (all tables, or one named table); `true` drops the `#[IsPrimary]` column from its table |
+| `only(string ...$props): array` | `asArray()` restricted to the given property names |
+| `except(string ...$props): array` | `asArray()` without the given property names |
 | `input(?string $key = null, mixed $default = ''): mixed` | the raw, unprocessed input (whole array, or one key) |
 
 `asTable('name')` throws `\OutOfBoundsException` if the requested table does not exist.
+
+`$withoutPrimary` produces the shape for insert/update SET clauses — the
+primary is auto-assigned on insert and targeted through the WHERE on update,
+so it is never a SET column:
+
+```php
+$sql->insert()->set($dto->asColumns(withoutPrimary: true));
+$sql->update()->set($dto->asColumns(withoutPrimary: true))->wherePrimary($dto->primaryValue());
+```
+
+`except()` is the answer to the "every valid field is mapped into every output"
+gotcha below — drop fields that validate but never persist:
+
+```php
+$registration->except('passwordConfirmation'); // everything else, keyed by property
+```
+
+### JSON
+
+`Dto` implements `JsonSerializable`: `json_encode($dto)` — or a list of DTOs —
+emits exactly `asArray()`. Invalid fields are omitted and engine internals can
+never leak into the encoding, so a DTO (or an array of them) can be passed
+straight to a JSON response.
+
+### Debugging
+
+`__debugInfo()` curates `var_dump($dto)` down to what matters — the validity
+flag, the validated values, and the errors — instead of the raw input and
+internal bookkeeping structures.
 
 ### Inspecting which fields passed / failed
 
@@ -148,6 +181,7 @@ public int $qty;
 | `validInputKeys(): array` | passed fields, as resolved input field names |
 | `invalidInputKeys(): array` | failed fields, as resolved input field names |
 | `primary(): ?string` | column name of the `#[IsPrimary]` property — its `#[Column]` name, else its resolved field name; `null` when none is tagged |
+| `primaryValue(): mixed` | the `#[IsPrimary]` property's **validated value** — `null` when none is tagged or it failed validation |
 
 By default (`$raw = true`) these return the **raw property names**. Pass `false`
 — or use the `*InputKeys()` wrappers — to get the resolved input field names (the
@@ -196,6 +230,26 @@ $request->asTable('user');
 | `#[Table('name', 'database')]` | table to group under in `asTable()`; optional database identifier |
 | `#[Label('Human Name')]` | name used in error messages (defaults to property name) |
 | `#[IsPrimary]` | tags the property holding the record's primary key — a pure marker. Its column name is retrievable via `primary()`. When multiple properties are tagged the last declared wins — there is only one primary |
+| `#[DbCast('int')]` | scalar cast (`int`, `float`, `string`, `bool`) applied to the value in `asColumns()` / `asTable()` **only** — the typed property, `asArray()`, and JSON keep the domain value. `null` is never cast. An unknown target throws `InvalidArgumentException` at the class's first construction |
+
+### Domain vs. storage types — `DbCast`
+
+Filters shape the **domain** value on the way in; `DbCast` shapes the
+**storage** value on the way out. The motivating case is a bool property whose
+column is an integer — without the cast, binding PHP `false` sends `''`, which
+strict-mode MySQL rejects for an `int` column:
+
+```php
+#[IsBoolean]
+#[ToBoolean]
+#[DbCast('int')]
+public bool $in_office;
+```
+
+```php
+$dto->in_office;      // true          (domain: bool, also in asArray()/JSON)
+$dto->asColumns();    // ['in_office' => 1]  (storage: int, ready to bind)
+```
 
 ## Filter Attributes
 
@@ -370,6 +424,12 @@ output a literal percent sign.
 
 ## Notes & Gotchas
 
+- **Declare properties `public protected(set)` to make the DTO immutable.**
+  The engine assigns validated values from inside the class hierarchy, so
+  asymmetric visibility costs nothing — but it stops outside code from
+  overwriting a property *after* validation, meaning an instance can only ever
+  hold what its rules let through. Plain `public` still works if you want
+  writable properties.
 - **Only valid fields appear in output.** A field that fails validation is not
   assigned to its typed property (reading it throws an "uninitialized" error) and
   is excluded from `asArray()` / `asColumns()` / `asTable()`.

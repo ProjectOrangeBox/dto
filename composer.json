@@ -1,6 +1,6 @@
 {
   "name": "orange/dto",
-  "description": "Attribute-driven DTOs with input validation and filtering for PHP 8.3+",
+  "description": "Attribute-driven DTOs with input validation and filtering for PHP 8.4+",
   "type": "library",
   "keywords": [
     "dto",
@@ -23,7 +23,7 @@
     "source": "https://github.com/ProjectOrangeBox/dto"
   },
   "require": {
-    "php": ">=8.3",
+    "php": ">=8.4",
     "ext-filter": "*",
     "ext-iconv": "*",
     "ext-json": "*",

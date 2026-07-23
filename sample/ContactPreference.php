@@ -34,7 +34,7 @@ class ContactPreference extends Dto
     #[Column('contact_method')]
     #[Table('contacts')]
     #[Label('Contact method')]
-    public string $contactMethod;
+    public protected(set) string $contactMethod;
 
     // Required only when contact_method is "email".
     #[Trim]
@@ -43,7 +43,7 @@ class ContactPreference extends Dto
     #[Column('email')]
     #[Table('contacts')]
     #[Label('Email')]
-    public string $email;
+    public protected(set) string $email;
 
     // Required only when contact_method is "phone".
     #[Trim]
@@ -52,7 +52,7 @@ class ContactPreference extends Dto
     #[Column('phone')]
     #[Table('contacts')]
     #[Label('Phone')]
-    public string $phone;
+    public protected(set) string $phone;
 
     #[Trim]
     #[IsRequired]
@@ -60,7 +60,7 @@ class ContactPreference extends Dto
     #[Column('handle')]
     #[Table('contacts')]
     #[Label('Handle')]
-    public string $handle;
+    public protected(set) string $handle;
 
     // An optional promo code: NullIfEmpty keeps it valid whether present or not.
     #[Trim]
@@ -69,7 +69,7 @@ class ContactPreference extends Dto
     #[Column('promo_code')]
     #[Table('contacts')]
     #[Label('Promo code')]
-    public ?string $promoCode;
+    public protected(set) ?string $promoCode;
 
     // Required only when a promo code was supplied.
     #[Trim]
@@ -78,5 +78,5 @@ class ContactPreference extends Dto
     #[Column('referral')]
     #[Table('contacts')]
     #[Label('Referral')]
-    public string $referral;
+    public protected(set) string $referral;
 }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace orange\dto;
 
+use JsonSerializable;
 use orange\dto\DtoAttribute;
 use ReflectionClass;
 use ReflectionProperty;
@@ -21,30 +22,33 @@ use ReflectionProperty;
  * per database row (see RecordModel::index()) therefore only pays the
  * reflection cost on the first row.
  *
+ * Subclass properties must be readable publicly — compile() only discovers
+ * properties whose get visibility is public. Declaring them
+ * `public protected(set)` (asymmetric visibility) is recommended: the engine
+ * can still assign validated values from whenValid(), while outside code can
+ * no longer overwrite a property after validation, so an instance always
+ * holds exactly what its rules let through.
+ *
  * SOLID Principles Applied:
  * - Single Responsibility: Handles only input validation and data organization
  * - Open/Closed: Extensible through DtoAttribute annotations without modifying core logic
- * - Interface Segregation: Provides multiple access methods (asArray, asTable, asColumns) for client flexibility
+ * - Interface Segregation: Provides multiple access methods (asArray, asTable, asColumns, only, except) for client flexibility
  * - Dependency Inversion: Depends on DtoAttribute abstraction rather than concrete validators
- *
- * @property array $errors Validation errors grouped by field name
- * @property array $db Validated data organized by table and column structure
- * @property array $array Validated data in simple associative array format
- * @property array $keys Mapping of raw property names to their resolved field names
- * @property ?string $primary Column name of the #[IsPrimary] property, null when none is tagged
  */
-class Dto
+class Dto implements JsonSerializable
 {
     /**
      * One compiled blueprint per concrete Dto class, shared by every instance.
      *
      * [class => [
      *     'primary' => ?string,
+     *     'primaryProperty' => ?string,
      *     'properties' => [property => [
      *         'fieldName' => string,   // input key (FieldName attribute or property name)
      *         'column' => string,      // db column (Column attribute or property name)
      *         'table' => string,       // db table (Table attribute or property name)
      *         'label' => string,       // human name (Label attribute or property name)
+     *         'dbCast' => ?string,     // db-shape cast target (DbCast attribute) or null
      *         'rules' => [[rule class, constructor args, has validate(), has filter()], ...],
      *     ]],
      * ]]
@@ -234,20 +238,29 @@ class Dto
     /**
      * Returns validated data organized by database table structure.
      *
+     * Pass $withoutPrimary = true to drop the #[IsPrimary] column from its
+     * table — the shape for insert/update SET clauses, where the primary is
+     * auto-assigned or targeted through the WHERE instead.
+     *
      * @param false|string $tablename Optional table name to retrieve specific table data; returns all tables if false
+     * @param bool $withoutPrimary When true the #[IsPrimary] property's column is removed from its table
      * @return array The table or column data structure
      * @throws \OutOfBoundsException When the requested table name is not found
      */
-    public function asTable(false|string $tablename = false): array
+    public function asTable(false|string $tablename = false, bool $withoutPrimary = false): array
     {
         $db = $this->db['tables'];
 
+        if ($withoutPrimary && ($meta = $this->primaryMeta()) !== null) {
+            unset($db[$meta['table']][$meta['column']]);
+        }
+
         if ($tablename) {
-            if (!isset($this->db['tables'][$tablename])) {
+            if (!isset($db[$tablename])) {
                 throw new \OutOfBoundsException('Table ' . $tablename . ' not found.');
             }
 
-            $db = $this->db['tables'][$tablename];
+            $db = $db[$tablename];
         }
 
         return $db;
@@ -256,11 +269,41 @@ class Dto
     /**
      * Returns validated data organized by column name.
      *
+     * Pass $withoutPrimary = true to drop the #[IsPrimary] column — the
+     * shape for insert/update SET clauses, where the primary is
+     * auto-assigned or targeted through the WHERE instead. Removal is
+     * resolved through the tagged property's blueprint entry, so it is
+     * immune to primary()'s field-name fallback diverging from the
+     * asColumns() key.
+     *
+     * @param bool $withoutPrimary When true the #[IsPrimary] property's column is removed
      * @return array An associative array of column names to their validated values
      */
-    public function asColumns(): array
+    public function asColumns(bool $withoutPrimary = false): array
     {
-        return $this->db['columns'];
+        $columns = $this->db['columns'];
+
+        if ($withoutPrimary && ($meta = $this->primaryMeta()) !== null) {
+            unset($columns[$meta['column']]);
+        }
+
+        return $columns;
+    }
+
+    /**
+     * Returns the #[IsPrimary] property's compiled blueprint entry.
+     *
+     * The authoritative source for the primary's true table and column keys
+     * in the db shapes — unlike primary(), which falls back to the field
+     * name without a #[Column] attribute.
+     *
+     * @return ?array The blueprint entry, or null when no property is tagged
+     */
+    private function primaryMeta(): ?array
+    {
+        $property = self::$blueprints[static::class]['primaryProperty'];
+
+        return $property === null ? null : self::$blueprints[static::class]['properties'][$property];
     }
 
     /**
@@ -271,6 +314,85 @@ class Dto
     public function asArray(): array
     {
         return $this->array;
+    }
+
+    /**
+     * Returns validated data restricted to the given property names.
+     *
+     * Property names with no validated value are simply absent from the
+     * result — like asArray(), invalid fields never appear.
+     *
+     * @param string ...$properties The property names to keep
+     * @return array The validated values for those properties, keyed by property name
+     */
+    public function only(string ...$properties): array
+    {
+        return array_intersect_key($this->array, array_flip($properties));
+    }
+
+    /**
+     * Returns validated data without the given property names.
+     *
+     * The complement of only() — useful for dropping fields that validate
+     * but never persist, such as a password confirmation.
+     *
+     * @param string ...$properties The property names to drop
+     * @return array The remaining validated values, keyed by property name
+     */
+    public function except(string ...$properties): array
+    {
+        return array_diff_key($this->array, array_flip($properties));
+    }
+
+    /**
+     * Returns the primary key's validated value.
+     *
+     * Resolved through the tagged property itself rather than primary()'s
+     * column name — primary() falls back to the field name without a
+     * #[Column] attribute, which need not match the asColumns() key, but
+     * the tagged property's validated value is always unambiguous. Null
+     * when no property is tagged #[IsPrimary] or when it failed validation.
+     *
+     * @return mixed The validated primary key value, or null
+     */
+    public function primaryValue(): mixed
+    {
+        $property = self::$blueprints[static::class]['primaryProperty'];
+
+        return $property === null ? null : ($this->array[$property] ?? null);
+    }
+
+    /**
+     * Serializes the DTO as its validated data.
+     *
+     * json_encode() on a Dto — or a list of them — emits exactly the fields
+     * that passed validation, keyed by property name. This is the explicit
+     * contract for API output: invalid fields are omitted and engine
+     * internals can never leak into the encoding.
+     *
+     * @return array The validated values, keyed by property name
+     */
+    public function jsonSerialize(): array
+    {
+        return $this->array;
+    }
+
+    /**
+     * Curates var_dump() output for debugging.
+     *
+     * Without this a dump drowns the interesting state in the raw input and
+     * internal table/column bookkeeping — what matters when inspecting a Dto
+     * is whether it validated, what survived, and what failed.
+     *
+     * @return array The validity flag, validated values, and errors
+     */
+    public function __debugInfo(): array
+    {
+        return [
+            'valid' => $this->isValid(),
+            'data' => $this->array,
+            'errors' => $this->errors,
+        ];
     }
 
     /**
@@ -300,7 +422,7 @@ class Dto
      */
     private static function compile(string $class): array
     {
-        $blueprint = ['primary' => null, 'properties' => []];
+        $blueprint = ['primary' => null, 'primaryProperty' => null, 'properties' => []];
 
         foreach (new ReflectionClass($class)->getProperties(ReflectionProperty::IS_PUBLIC) as $property) {
             // collect the DtoAttribute attributes keyed by short name — a
@@ -335,12 +457,16 @@ class Dto
             $column = isset($byLowerName['column']) ? $byLowerName['column']->newInstance()->getName() : $propertyName;
             $table = isset($byLowerName['table']) ? $byLowerName['table']->newInstance()->getName() : $propertyName;
             $label = isset($byLowerName['label']) ? $byLowerName['label']->newInstance()->getName() : $propertyName;
+            // instantiating DbCast validates its target — a typo throws here,
+            // at the class's first construction, not silently at storage time
+            $dbCast = isset($byLowerName['dbcast']) ? $byLowerName['dbcast']->newInstance()->getName() : null;
 
             // a property tagged #[IsPrimary] records its column name for primary();
             // with no #[Column] attribute the resolved field name is used instead.
             // a later tagged property always overwrites — there is only one primary
             if (isset($byLowerName['isprimary'])) {
                 $blueprint['primary'] = isset($byLowerName['column']) ? $column : $fieldName;
+                $blueprint['primaryProperty'] = $propertyName;
             }
 
             // keep only the attributes that actually validate or filter;
@@ -362,6 +488,7 @@ class Dto
                 'column' => $column,
                 'table' => $table,
                 'label' => $label,
+                'dbCast' => $dbCast,
                 'rules' => $rules,
             ];
         }
@@ -422,7 +549,7 @@ class Dto
         // if the value is valid assign it to the class and add it to the db array properties
         if ($isValid) {
             // assign the value to the class and add it to the db array properties
-            $this->whenValid($property, $value, $meta['table'], $meta['column']);
+            $this->whenValid($property, $value, $meta['table'], $meta['column'], $meta['dbCast']);
         }
     }
 
@@ -431,14 +558,18 @@ class Dto
      *
      * Assigns the validated value to the class property, and stores it in the
      * array and database table/column structures for flexible data access.
+     * A DbCast target applies to the db shapes only — the property and array
+     * keep the domain value while asColumns()/asTable() carry the storage
+     * value (e.g. a bool property stored as 0/1).
      *
      * @param string $property The property name to assign the value to
      * @param mixed $value The validated value to store
      * @param string $table The database table name
      * @param string $column The database column name
+     * @param ?string $dbCast Scalar cast target for the db shapes, or null for none
      * @return void
      */
-    protected function whenValid($property, $value, $table, $column): void
+    protected function whenValid($property, $value, $table, $column, $dbCast = null): void
     {
         // assign to the class
         $this->$property = $value;
@@ -446,8 +577,17 @@ class Dto
         // assign to the array for easy access
         $this->array[$property] = $value;
 
+        // the db shapes may carry a different storage type than the domain
+        // property — null is never cast, so nullable columns stay null
+        $dbValue = ($dbCast === null || $value === null) ? $value : match ($dbCast) {
+            'int' => (int)$value,
+            'float' => (float)$value,
+            'string' => (string)$value,
+            'bool' => (bool)$value,
+        };
+
         // if valid add it to the db array
-        $this->db['tables'][$table][$column] = $value;
-        $this->db['columns'][$column] = $value;
+        $this->db['tables'][$table][$column] = $dbValue;
+        $this->db['columns'][$column] = $dbValue;
     }
 }

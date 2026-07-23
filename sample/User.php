@@ -20,38 +20,38 @@ use orange\dto\Dto;
 
 class User extends Dto
 {
-  #[IsRequired]
-  #[MaxLength(64)]
-  #[MinLength(1)]
-  #[Column('name')]
-  #[Table('user')]
-  #[ToString]
-  #[Label('Name')]
-  #[FieldName('fullname')]
-  public string $name;
+    #[IsRequired]
+    #[MaxLength(64)]
+    #[MinLength(1)]
+    #[Column('name')]
+    #[Table('user')]
+    #[ToString]
+    #[Label('Name')]
+    #[FieldName('fullname')]
+    public protected(set) string $name;
 
-  #[IsRequired]
-  #[ToInteger]
-  #[GreaterThan(18)]
-  #[LessThan(110)]
-  #[Table('user')]
-  #[Label('Age')]
-  public int $age;
+    #[IsRequired]
+    #[ToInteger]
+    #[GreaterThan(18)]
+    #[LessThan(110)]
+    #[Table('user')]
+    #[Label('Age')]
+    public protected(set) int $age;
 
-  #[IsRequired]
-  #[MaxLength(16)]
-  #[MinLength(4)]
-  #[Column('fav_color')]
-  #[Table('user')]
-  #[ToString]
-  #[FieldName('clr')]
-  #[Label('Favorite Color')]
-  public string $color;
+    #[IsRequired]
+    #[MaxLength(16)]
+    #[MinLength(4)]
+    #[Column('fav_color')]
+    #[Table('user')]
+    #[ToString]
+    #[FieldName('clr')]
+    #[Label('Favorite Color')]
+    public protected(set) string $color;
 
-  #[IsRequired]
-  #[InList(['red', 'green', 'blue'])]
-  public string $rgb;
+    #[IsRequired]
+    #[InList(['red', 'green', 'blue'])]
+    public protected(set) string $rgb;
 
-  #[ToString]
-  public string $notRequired;
+    #[ToString]
+    public protected(set) string $notRequired;
 }

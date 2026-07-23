@@ -34,7 +34,7 @@ class Article extends Dto
     #[Column('title')]
     #[Table('articles')]
     #[Label('Title')]
-    public string $title;
+    public protected(set) string $title;
 
     #[Trim]
     #[ToLower]
@@ -44,7 +44,7 @@ class Article extends Dto
     #[Column('slug')]
     #[Table('articles')]
     #[Label('Slug')]
-    public string $slug;
+    public protected(set) string $slug;
 
     #[Trim]
     #[StripTags]
@@ -53,7 +53,7 @@ class Article extends Dto
     #[Column('body')]
     #[Table('articles')]
     #[Label('Body')]
-    public string $body;
+    public protected(set) string $body;
 
     // DefaultTo supplies a value when the field is missing or empty, so the
     // InList check below always sees a value it can accept.
@@ -62,7 +62,7 @@ class Article extends Dto
     #[Column('status')]
     #[Table('articles')]
     #[Label('Status')]
-    public string $status;
+    public protected(set) string $status;
 
     #[Trim]
     #[IsRequired]
@@ -71,5 +71,5 @@ class Article extends Dto
     #[Column('published_on')]
     #[Table('articles')]
     #[Label('Publish date')]
-    public string $publishedOn;
+    public protected(set) string $publishedOn;
 }
