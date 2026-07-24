@@ -574,7 +574,7 @@ class Dto implements JsonSerializable
 
         // optional fields only validate when provided — null, '' and [] count
         // as absent; presence rules (see validatesAbsent()) always run
-        $provided = $value !== null && $value !== '' && $value !== [];
+        $provided = $value !== '' && $value !== [];
 
         // an absent dto-array normalizes to [] so the typed array property
         // and the flattened output stay well-formed either way
@@ -662,6 +662,7 @@ class Dto implements JsonSerializable
             'float' => (float)$value,
             'string' => (string)$value,
             'bool' => (bool)$value,
+            default => $value,
         };
 
         // if valid add it to the db array

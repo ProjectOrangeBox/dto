@@ -45,7 +45,7 @@ class ValidIban extends DtoAttribute
         $remainder = 0;
 
         foreach (str_split($digits, 7) as $chunk) {
-            $remainder = (int)(($remainder . $chunk) % 97);
+            $remainder = (int)($remainder . $chunk) % 97;
         }
 
         return $remainder === 1;

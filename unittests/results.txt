@@ -28,6 +28,42 @@ Dto
  [x] Primary falls back to field name without column
  [x] Primary is null without is primary
  [x] Primary last tagged property wins
+ [x] Protected set property is assigned by the engine
+ [x] Protected set property rejects external writes
+ [x] Only returns just the requested properties
+ [x] Only skips invalid and unknown properties
+ [x] Except drops the given properties
+ [x] Primary value returns the validated value
+ [x] Primary value is null without is primary
+ [x] Primary value is null when the primary fails validation
+ [x] Json encode emits only validated data
+ [x] Json encode omits invalid fields
+ [x] Json encode serializes lists of dtos
+ [x] As columns without primary drops the primary column
+ [x] As columns without primary uses the true column key
+ [x] As columns without primary is a no op when none is tagged
+ [x] As table without primary drops it from its table only
+ [x] Db cast applies to db shapes only
+ [x] Db cast never casts null
+ [x] Db cast rejects an unknown target at compile time
+ [x] Debug info curates validity data and errors
+
+Dto Array
+ [x] Valid dto array builds children
+ [x] Valid output is nested plain arrays
+ [x] Db shapes skip dto arrays
+ [x] Invalid child is single parent error
+ [x] Non object entry is distinct parent error
+ [x] Non array value fails without assignment
+ [x] Count rules still apply and children remain extractable
+ [x] Input keys are preserved
+ [x] Absent optional dto array is empty array
+ [x] Absent required dto array fails but stays extractable
+ [x] Nested dto arrays flatten recursively
+ [x] All errors includes dot keyed child detail
+ [x] All errors matches errors when nothing nested
+ [x] All errors recurses through nested dto arrays
+ [x] Non dto child class throws
 
 Dto Attribute
  [x] Default human name is used
@@ -79,6 +115,8 @@ Metadata Attributes
  [x] Label defaults to empty string
  [x] Table
  [x] Table defaults to empty strings
+ [x] Db cast accepts each scalar target
+ [x] Db cast rejects an unknown target
 
 Validation Attributes
  [x] Alpha

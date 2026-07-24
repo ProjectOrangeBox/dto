@@ -82,6 +82,43 @@
             <li class="success">Primary falls back to field name without column</li>
             <li class="success">Primary is null without is primary</li>
             <li class="success">Primary last tagged property wins</li>
+            <li class="success">Protected set property is assigned by the engine</li>
+            <li class="success">Protected set property rejects external writes</li>
+            <li class="success">Only returns just the requested properties</li>
+            <li class="success">Only skips invalid and unknown properties</li>
+            <li class="success">Except drops the given properties</li>
+            <li class="success">Primary value returns the validated value</li>
+            <li class="success">Primary value is null without is primary</li>
+            <li class="success">Primary value is null when the primary fails validation</li>
+            <li class="success">Json encode emits only validated data</li>
+            <li class="success">Json encode omits invalid fields</li>
+            <li class="success">Json encode serializes lists of dtos</li>
+            <li class="success">As columns without primary drops the primary column</li>
+            <li class="success">As columns without primary uses the true column key</li>
+            <li class="success">As columns without primary is a no op when none is tagged</li>
+            <li class="success">As table without primary drops it from its table only</li>
+            <li class="success">Db cast applies to db shapes only</li>
+            <li class="success">Db cast never casts null</li>
+            <li class="success">Db cast rejects an unknown target at compile time</li>
+            <li class="success">Debug info curates validity data and errors</li>
+        </ul>
+        <h2>Dto Array</h2>
+        <ul>
+            <li class="success">Valid dto array builds children</li>
+            <li class="success">Valid output is nested plain arrays</li>
+            <li class="success">Db shapes skip dto arrays</li>
+            <li class="success">Invalid child is single parent error</li>
+            <li class="success">Non object entry is distinct parent error</li>
+            <li class="success">Non array value fails without assignment</li>
+            <li class="success">Count rules still apply and children remain extractable</li>
+            <li class="success">Input keys are preserved</li>
+            <li class="success">Absent optional dto array is empty array</li>
+            <li class="success">Absent required dto array fails but stays extractable</li>
+            <li class="success">Nested dto arrays flatten recursively</li>
+            <li class="success">All errors includes dot keyed child detail</li>
+            <li class="success">All errors matches errors when nothing nested</li>
+            <li class="success">All errors recurses through nested dto arrays</li>
+            <li class="success">Non dto child class throws</li>
         </ul>
         <h2>Dto Attribute</h2>
         <ul>
@@ -136,6 +173,8 @@
             <li class="success">Label defaults to empty string</li>
             <li class="success">Table</li>
             <li class="success">Table defaults to empty strings</li>
+            <li class="success">Db cast accepts each scalar target</li>
+            <li class="success">Db cast rejects an unknown target</li>
         </ul>
         <h2>Validation Attributes</h2>
         <ul>
