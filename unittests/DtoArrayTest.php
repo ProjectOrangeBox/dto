@@ -79,7 +79,7 @@ class BundleRequest extends Dto
     public protected(set) array $orders;
 }
 
-final class DtoArrayTest extends UnitTestHelper
+final class DtoArrayTest extends unitTestHelper
 {
     private function validInput(): array
     {

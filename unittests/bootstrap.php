@@ -28,7 +28,6 @@ function isLogEnabled()
     return false;
 }
 
-require __DIR__ . '/../../framework/unittest/unitTestHelper.php';
 
 // include the composer autoloader
 require __DIR__ . '/../../../autoload.php';

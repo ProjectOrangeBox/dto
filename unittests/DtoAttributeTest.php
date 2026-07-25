@@ -5,7 +5,7 @@ declare(strict_types=1);
 use orange\dto\Dto;
 use orange\dto\DtoAttribute;
 
-final class DtoAttributeTest extends UnitTestHelper
+final class DtoAttributeTest extends unitTestHelper
 {
     /**
      * A minimal attribute exposing a template so the base getMessage() logic can be tested.

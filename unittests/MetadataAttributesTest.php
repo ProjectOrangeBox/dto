@@ -8,7 +8,7 @@ use orange\dto\attributes\FieldName;
 use orange\dto\attributes\Label;
 use orange\dto\attributes\Table;
 
-final class MetadataAttributesTest extends UnitTestHelper
+final class MetadataAttributesTest extends unitTestHelper
 {
     public function testColumn(): void
     {

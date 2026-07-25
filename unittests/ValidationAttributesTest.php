@@ -78,7 +78,7 @@ use orange\dto\attributes\validations\ValidUlid;
 use orange\dto\attributes\validations\ValidUrl;
 use orange\dto\attributes\validations\ValidUuid;
 
-final class ValidationAttributesTest extends UnitTestHelper
+final class ValidationAttributesTest extends unitTestHelper
 {
     protected function makeRequest(array $input): Dto
     {

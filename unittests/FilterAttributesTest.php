@@ -35,7 +35,7 @@ use orange\dto\attributes\filters\Trim;
 use orange\dto\attributes\filters\UcFirst;
 use orange\dto\attributes\filters\UcWords;
 
-final class FilterAttributesTest extends UnitTestHelper
+final class FilterAttributesTest extends unitTestHelper
 {
     public function testToString(): void
     {

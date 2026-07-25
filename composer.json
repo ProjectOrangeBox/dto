@@ -30,7 +30,8 @@
     "ext-mbstring": "*"
   },
   "require-dev": {
-    "phpunit/phpunit": "^10.5 || ^11.0"
+    "phpunit/phpunit": "^10.5 || ^11.0",
+    "orange/testkit": "dev-master"
   },
   "suggest": {
     "ext-intl": "Accurate ASCII transliteration for the Transliterate filter (falls back to iconv)"

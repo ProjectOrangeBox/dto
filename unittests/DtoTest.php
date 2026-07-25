@@ -100,7 +100,7 @@ class MixedAttributeRequest extends Dto
     public string $field;
 }
 
-final class DtoTest extends UnitTestHelper
+final class DtoTest extends unitTestHelper
 {
     private function validProfileInput(): array
     {
