@@ -46,8 +46,11 @@ function demo(string $class, string $label, array $input): void
     if ($request->isValid()) {
         echo 'VALID' . PHP_EOL;
         echo 'asArray:   ' . json_encode($request->asArray()) . PHP_EOL;
-        echo 'asColumns: ' . json_encode($request->asColumns()) . PHP_EOL;
-        echo 'asColumns(user): ' . json_encode($request->asColumns(tablename: 'user')) . PHP_EOL;
+        // a class that names #[Table]s must say which one is asking; one that
+        // names none takes no name at all
+        $table = $request->tables()[0] ?? null;
+
+        echo 'asColumns: ' . json_encode($request->asColumns(tablename: $table)) . PHP_EOL;
     } else {
         echo 'INVALID' . PHP_EOL;
 
@@ -194,7 +197,7 @@ echo 'parent errors: ' . json_encode($order->errors()) . PHP_EOL;
 
 foreach ($order->lines as $index => $line) {
     if ($line->isValid()) {
-        echo 'line ' . $index . ' asColumns: ' . json_encode($line->asColumns()) . PHP_EOL;
+        echo 'line ' . $index . ' asColumns: ' . json_encode($line->asColumns(tablename: 'order_lines')) . PHP_EOL;
     } else {
         echo 'line ' . $index . ' errors:  ' . json_encode($line->errors()) . PHP_EOL;
     }

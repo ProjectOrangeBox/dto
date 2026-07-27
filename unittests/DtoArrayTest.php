@@ -132,11 +132,10 @@ final class DtoArrayTest extends unitTestHelper
         $request = new OrderRequest($this->validInput());
 
         // the parent shapes never contain the nested structure
-        $this->assertSame(['customer' => 'Johnny Appleseed'], $request->asColumns());
         $this->assertSame(['customer' => 'Johnny Appleseed'], $request->asColumns(tablename: 'orders'));
 
         // each child is persisted individually through its own shapes
-        $this->assertSame(['sku' => 'A1', 'qty' => 2], $request->lines[0]->asColumns());
+        $this->assertSame(['sku' => 'A1', 'qty' => 2], $request->lines[0]->asColumns(tablename: 'order_lines'));
         $this->assertSame(['sku' => 'B2', 'qty' => 1], $request->lines[1]->asColumns(tablename: 'order_lines'));
     }
 

@@ -43,7 +43,7 @@ class Dto implements JsonSerializable
      *
      * [class => [
      *     'primaries' => [property, ...],  // the #[IsPrimary] properties, in declaration order
-     *     'usesTables' => bool,    // does any property carry a #[Table]?
+     *     'tables' => [name, ...], // every table named by a #[Table], in declaration order
      *     'properties' => [property => [
      *         'fieldName' => string,   // input key (FieldName attribute or property name)
      *         'column' => string,      // db column (Column attribute or property name)
@@ -314,57 +314,71 @@ class Dto implements JsonSerializable
     }
 
     /**
+     * Returns the tables this class names, in declaration order.
+     *
+     * Null when no property carries a #[Table] - which is also the answer to
+     * "may I call asColumns() without naming a table?". A class that names
+     * tables requires one; a class that names none takes any.
+     *
+     * Read off the class's declarations, not off the data, so an all-invalid
+     * instance still reports the tables its class describes.
+     *
+     * @return ?array<int, string> The table names, or null when the class names none
+     */
+    public function tables(): ?array
+    {
+        $tables = self::$blueprints[static::class]['tables'];
+
+        return $tables === [] ? null : $tables;
+    }
+
+    /**
      * Returns validated data organized by column name.
      *
-     * With no $tablename this is the whole record: every valid property,
-     * whether or not it carries a #[Table].
+     * A class that names no #[Table] describes one table - whichever one the
+     * model holding it writes to - so asColumns() hands back every valid
+     * property and any $tablename passed is simply that table's name.
      *
-     * Name a table and you get only the properties tagged #[Table] for it,
-     * which is what lets one Dto describe a whole form spanning several tables
-     * and each model take the columns that are its own. What comes back when
-     * the class has nothing under that name depends on why:
+     * A class that does name tables describes several, and "every column" is
+     * then not an answer any one of them can use: the $tablename says which
+     * table is asking, and only the properties tagged for it come back.
+     * Omitting it throws, because there is no sensible default - see tables()
+     * for what a class will answer to.
      *
-     *   - the class tags no table anywhere - it was written for a single model
-     *     and had no reason to name it. Null, or every column when the caller
-     *     passes $orAllColumns, which is that caller saying "an untagged Dto is
-     *     all mine".
-     *   - the class does name tables, just not this one. Null, and $orAllColumns
-     *     does not override it: a Dto that speaks for other tables and not
-     *     yours is a wiring mistake - a mistyped table name, most likely - and
-     *     answering it with another table's columns would write them into yours.
-     *
-     * A Dto whose fields all failed validation has nothing under any table
-     * either, so it too answers null; ask isValid() to tell that apart.
+     * Null means the class names tables and has nothing under the one asked
+     * for: a mistyped table name or the wrong Dto for the job. A Dto whose
+     * fields all failed validation has nothing under any of its tables either,
+     * so it too answers null; ask isValid() to tell that apart.
      *
      * Pass $withoutPrimary = true to drop the #[IsPrimary] column — the
      * shape for insert/update SET clauses, where the primary is
      * auto-assigned or targeted through the WHERE instead. Removal is
-     * resolved through the tagged property's blueprint entry, so it is
-     * immune to primary()'s field-name fallback diverging from the
-     * asColumns() key. Under a $tablename only that property's own table
-     * loses it, so a second table keeping its own `id` column keeps it.
+     * resolved through the tagged property's blueprint entry, so it always
+     * targets the true column key. A compound key goes whole; under a
+     * $tablename only that table's key goes, so a second table keeping its
+     * own `id` column keeps it.
      *
-     * @param bool $withoutPrimary When true the #[IsPrimary] property's column is removed
-     * @param ?string $tablename Restrict to the properties tagged #[Table] for this table
-     * @param bool $orAllColumns Return every column when the class tags no table at all
-     * @return ($tablename is null ? array : ?array) Column names to validated values; null only when a $tablename was named and the class has nothing under it
+     * @param bool $withoutPrimary When true the #[IsPrimary] properties' columns are removed
+     * @param ?string $tablename The table asking - required when the class names any
+     * @return ($tablename is null ? array : ?array) Column names to validated values; null when the class has nothing under $tablename
+     * @throws LogicException When the class names tables and no $tablename was given
      */
-    public function asColumns(bool $withoutPrimary = false, ?string $tablename = null, bool $orAllColumns = false): ?array
+    public function asColumns(bool $withoutPrimary = false, ?string $tablename = null): ?array
     {
         $columns = $this->db['columns'];
         $scoped = false;
 
-        if ($tablename !== null) {
-            if (self::$blueprints[static::class]['usesTables']) {
-                if (!isset($this->db['tables'][$tablename])) {
-                    return null;
-                }
+        if (($tables = $this->tables()) !== null) {
+            if ($tablename === null) {
+                throw new LogicException(static::class . ' names ' . count($tables) . ' table(s) (' . implode(', ', $tables) . '); asColumns() needs to know which one is asking - pass $tablename.');
+            }
 
-                $columns = $this->db['tables'][$tablename];
-                $scoped = true;
-            } elseif (!$orAllColumns) {
+            if (!isset($this->db['tables'][$tablename])) {
                 return null;
             }
+
+            $columns = $this->db['tables'][$tablename];
+            $scoped = true;
         }
 
         if ($withoutPrimary) {
@@ -399,7 +413,7 @@ class Dto implements JsonSerializable
 
             // a class that names no table at all has only the one table it was
             // written for, so its primaries answer to any name the caller asks by
-            if ($tablename === null || !$blueprint['usesTables'] || $meta['table'] === $tablename) {
+            if ($tablename === null || $blueprint['tables'] === [] || $meta['table'] === $tablename) {
                 $metas[$property] = $meta;
             }
         }
@@ -570,7 +584,7 @@ class Dto implements JsonSerializable
      */
     private static function compile(string $class): array
     {
-        $blueprint = ['primaries' => [], 'usesTables' => false, 'properties' => []];
+        $blueprint = ['primaries' => [], 'tables' => [], 'properties' => []];
 
         foreach (new ReflectionClass($class)->getProperties(ReflectionProperty::IS_PUBLIC) as $property) {
             // collect the DtoAttribute attributes keyed by short name — a
@@ -608,9 +622,11 @@ class Dto implements JsonSerializable
             // says as little as no attribute at all
             $table = isset($byLowerName['table']) ? ($byLowerName['table']->newInstance()->getName() ?: null) : null;
 
-            // whether the class names tables at all decides how asColumns()
-            // answers for a table it has nothing for - see $orAllColumns
-            $blueprint['usesTables'] = $blueprint['usesTables'] || $table !== null;
+            // the tables this class names decide whether asColumns() requires
+            // a $tablename, and which ones it will answer to
+            if ($table !== null && !in_array($table, $blueprint['tables'], true)) {
+                $blueprint['tables'][] = $table;
+            }
             $label = isset($byLowerName['label']) ? $byLowerName['label']->newInstance()->getName() : $propertyName;
             // instantiating DbCast validates its target — a typo throws here,
             // at the class's first construction, not silently at storage time

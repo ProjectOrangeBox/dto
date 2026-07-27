@@ -90,7 +90,8 @@ $request = new UserRequest([
 if ($request->isValid()) {
     echo $request->name;            // "Johnny Appleseed"
     echo $request->age;             // 23 (int)
-    print_r($request->asColumns()); // ['name' => ..., 'age' => 23, 'fav_color' => 'Orange']
+    // the class names a #[Table], so asColumns() asks by name
+    print_r($request->asColumns(tablename: 'user')); // ['name' => ..., 'age' => 23, 'fav_color' => 'Orange']
 } else {
     print_r($request->errors());
 }
@@ -136,16 +137,23 @@ public int $qty;
 | `errors(): array` | `['fieldName' => ['message', ...], ...]` |
 | `allErrors(): array` | `errors()` plus [nested DTO](#nested-dtos) detail, dot-keyed: `['lines.1.sku' => [...], ...]` |
 | `asArray(): array` | valid values keyed by **property name** |
-| `asColumns(bool $withoutPrimary = false, ?string $tablename = null, bool $orAllColumns = false): ?array` | valid values keyed by **column name**; `$withoutPrimary` drops the `#[IsPrimary]` column, `$tablename` restricts to the properties tagged `#[Table]` for that table |
+| `asColumns(bool $withoutPrimary = false, ?string $tablename = null): ?array` | valid values keyed by **column name**; `$withoutPrimary` drops the `#[IsPrimary]` columns, `$tablename` restricts to the properties tagged `#[Table]` for that table — **required** when the class names any |
+| `tables(): ?array` | the tables the class names, in declaration order; `null` when it names none |
 | `only(string ...$props): array` | `asArray()` restricted to the given property names |
 | `except(string ...$props): array` | `asArray()` without the given property names |
 | `input(?string $key = null, mixed $default = ''): mixed` | the raw, unprocessed input (whole array, or one key) |
 
 ### One DTO, several tables
 
-Name a table and `asColumns()` returns only the properties tagged `#[Table]`
-for it. One class can then carry a whole form and each model take the columns
-that are its own:
+A class that names no `#[Table]` describes **one** table — whichever one the
+model holding it writes to. `asColumns()` hands back every valid property and
+needs no table name; any name passed is simply that table's.
+
+A class that does name tables describes **several**, and "every column" is then
+not an answer any one of them can use. The `$tablename` says which table is
+asking, and only the properties tagged for it come back. `tables()` is how you
+find out which case you are in — and omitting the name when the class names
+tables **throws a `LogicException`**, because there is no sensible default:
 
 ```php
 class UserProfile extends Dto
@@ -160,30 +168,31 @@ class UserProfile extends Dto
     public string $confirmToken;
 }
 
+$request->tables();                           // ['users', 'user_meta']
+
 $request->asColumns(tablename: 'users');      // ['name' => 'Ada']
 $request->asColumns(tablename: 'user_meta');  // ['bio' => 'Engineer']
-$request->asColumns();                        // name, bio and confirmToken together
+$request->asColumns();                        // LogicException - which table is asking?
 ```
 
-`null` is the answer when the class has nothing under that name, and **why**
-decides whether `$orAllColumns` can override it:
+`$confirmToken` carries no `#[Table]`, so it reaches neither — which is what you
+want for a field that validates but never persists.
+
+`null` is the answer when the class names tables but has nothing under the one
+asked for: a mistyped table name, or the wrong DTO for the job.
 
 ```php
-// this class names tables, just not that one - a mistyped table name, most
-// likely. $orAllColumns does not rescue it: answering with another table's
-// columns would write them into yours
-$request->asColumns(tablename: 'sessions');                      // null
-$request->asColumns(tablename: 'sessions', orAllColumns: true);  // null
+$request->asColumns(tablename: 'sessions');   // null
 
-// a class that tags nothing at all was written for a single model and had no
-// reason to name its table. $orAllColumns is the caller saying "then it is
-// all mine" - this is what orange/model's DtoModel does
-$token->asColumns(tablename: 'tokens');                      // null
-$token->asColumns(tablename: 'tokens', orAllColumns: true);  // every column
+// the single-table case, for contrast - no #[Table] anywhere
+$token->tables();                             // null
+$token->asColumns();                          // every column
+$token->asColumns(tablename: 'tokens');       // the same, the name is simply its own
 ```
 
-A DTO whose fields all failed validation has nothing under any table either, so
-it answers `null` as well; ask `isValid()` to tell that apart.
+A DTO whose fields all failed validation has nothing under any of its tables
+either, so it too answers `null`; ask `isValid()` to tell that apart. `tables()`
+is unaffected — it reads the class's declarations, not the instance's data.
 
 ### Compound and per-table keys
 
@@ -301,8 +310,8 @@ Given the `UserRequest` above with valid input:
 $request->asArray();
 // ['name' => 'Johnny Appleseed', 'age' => 23, 'color' => 'Orange']
 
-$request->asColumns();
-// ['name' => 'Johnny Appleseed', 'age' => 23, 'fav_color' => 'Orange']
+$request->tables();
+// ['user'] - so asColumns() must be told which table is asking
 
 $request->asColumns(tablename: 'user');
 // ['name' => 'Johnny Appleseed', 'age' => 23, 'fav_color' => 'Orange']
@@ -317,7 +326,7 @@ $request->asColumns(tablename: 'audit');
 | --- | --- |
 | `#[FieldName('key')]` | input array key to read from (defaults to property name) |
 | `#[Column('col')]` | column name used by `asColumns()` (defaults to property name) |
-| `#[Table('name', 'database')]` | the table this property belongs to, which `asColumns($tablename)` filters on; optional database identifier. Without it — or with an empty name — the property belongs to no table and only ever appears in an unfiltered `asColumns()` |
+| `#[Table('name', 'database')]` | the table this property belongs to, which `asColumns($tablename)` filters on and `tables()` reports; optional database identifier. Without it — or with an empty name — the property belongs to no table and only ever appears in an unnamed `asColumns()` |
 | `#[Label('Human Name')]` | name used in error messages (defaults to property name) |
 | `#[IsPrimary]` | tags a property holding part of the record's primary key — a pure marker. Retrievable via `primaries()`/`primaryValues()`. Several tagged properties make a [compound or per-table key](#compound-and-per-table-keys) |
 | `#[DbCast('int')]` | scalar cast (`int`, `float`, `string`, `bool`) applied to the value in `asColumns()` **only** — the typed property, `asArray()`, and JSON keep the domain value. `null` is never cast. An unknown target throws `InvalidArgumentException` at the class's first construction |
@@ -339,6 +348,7 @@ public bool $in_office;
 ```php
 $dto->in_office;      // true          (domain: bool, also in asArray()/JSON)
 $dto->asColumns();    // ['in_office' => 1]  (storage: int, ready to bind)
+                      // (this class names no #[Table], so no name is needed)
 ```
 
 ## Filter Attributes
