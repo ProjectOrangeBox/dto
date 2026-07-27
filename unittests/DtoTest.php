@@ -162,16 +162,22 @@ final class DtoTest extends unitTestHelper
         ], $request->asColumns(tablename: 'user'));
     }
 
-    public function testAsColumnsReturnsNullForATableTheClassDoesNotName(): void
+    /**
+     * A table the class does not name is a mistyped name or the wrong Dto for
+     * the job - a bug either way, and one that is the same for every instance
+     * because what a class names is fixed at its first construction.
+     */
+    public function testAsColumnsThrowsForATableTheClassDoesNotName(): void
     {
         $request = new ProfileRequest($this->validProfileInput());
 
-        // "I have nothing under that name" - the answer a model reads to
-        // decide whether this Dto speaks for its table at all
-        $this->assertNull($request->asColumns(tablename: 'missing'));
-
-        // and the class's own tables are on the record for comparison
+        // the class's own tables are on the record for comparison
         $this->assertSame(['user'], $request->tables());
+
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('has no table "missing" - it names user');
+
+        $request->asColumns(tablename: 'missing');
     }
 
     /**
@@ -221,8 +227,10 @@ final class DtoTest extends unitTestHelper
         // both tables are named, the untagged property's name is not
         $this->assertSame(['records', 'audit'], $request->tables());
 
-        // so no table was invented from it, and its value reaches neither
-        $this->assertNull($request->asColumns(tablename: 'scratch'));
+        // so no table was invented from it, and asking by it is a mistake
+        $this->expectException(\LogicException::class);
+
+        $request->asColumns(tablename: 'scratch');
     }
 
     public function testAClassThatNamesNoTableTakesAnyTablename(): void
@@ -290,10 +298,11 @@ final class DtoTest extends unitTestHelper
 
         $this->assertSame([], $request->asArray());
 
-        // nothing valid landed, so the table it names has nothing in it - and
-        // the class still reports the table, which is a declaration not data
+        // nothing valid landed, so the table it names comes back empty - a
+        // reading of the data, not the error an unnamed table would be. The
+        // class still reports the table, which is a declaration not data
         $this->assertSame(['user'], $request->tables());
-        $this->assertNull($request->asColumns(tablename: 'user'));
+        $this->assertSame([], $request->asColumns(tablename: 'user'));
     }
 
     public function testASingleFieldCanFailWhileOthersSucceed(): void

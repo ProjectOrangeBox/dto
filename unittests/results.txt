@@ -4,7 +4,7 @@ Dto
  [x] As array is keyed by property name
  [x] As columns is keyed by column name
  [x] As columns can be restricted to one table
- [x] As columns returns null for a table the class does not name
+ [x] As columns throws for a table the class does not name
  [x] Tables reports what the class names
  [x] Tables is unaffected by validation
  [x] As columns demands a table when the class names any

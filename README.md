@@ -137,7 +137,7 @@ public int $qty;
 | `errors(): array` | `['fieldName' => ['message', ...], ...]` |
 | `allErrors(): array` | `errors()` plus [nested DTO](#nested-dtos) detail, dot-keyed: `['lines.1.sku' => [...], ...]` |
 | `asArray(): array` | valid values keyed by **property name** |
-| `asColumns(bool $withoutPrimary = false, ?string $tablename = null): ?array` | valid values keyed by **column name**; `$withoutPrimary` drops the `#[IsPrimary]` columns, `$tablename` restricts to the properties tagged `#[Table]` for that table — **required** when the class names any |
+| `asColumns(bool $withoutPrimary = false, ?string $tablename = null): array` | valid values keyed by **column name**; `$withoutPrimary` drops the `#[IsPrimary]` columns, `$tablename` restricts to the properties tagged `#[Table]` for that table — **required**, and must be one the class names, when the class names any |
 | `tables(): ?array` | the tables the class names, in declaration order; `null` when it names none |
 | `only(string ...$props): array` | `asArray()` restricted to the given property names |
 | `except(string ...$props): array` | `asArray()` without the given property names |
@@ -173,26 +173,32 @@ $request->tables();                           // ['users', 'user_meta']
 $request->asColumns(tablename: 'users');      // ['name' => 'Ada']
 $request->asColumns(tablename: 'user_meta');  // ['bio' => 'Engineer']
 $request->asColumns();                        // LogicException - which table is asking?
+$request->asColumns(tablename: 'sessions');   // LogicException - not a table it names
 ```
 
 `$confirmToken` carries no `#[Table]`, so it reaches neither — which is what you
 want for a field that validates but never persists.
 
-`null` is the answer when the class names tables but has nothing under the one
-asked for: a mistyped table name, or the wrong DTO for the job.
+Both errors are bugs rather than values: a class's tables are fixed at its first
+construction, so a name it does not have is a typo or the wrong DTO for the job
+and will be wrong for every instance. A table it *does* name but has nothing
+valid under simply comes back **empty** — that is a reading of the data:
 
 ```php
-$request->asColumns(tablename: 'sessions');   // null
+$invalid = new UserProfile(['name' => '']);
 
-// the single-table case, for contrast - no #[Table] anywhere
+$invalid->isValid();                          // false
+$invalid->tables();                           // ['users', 'user_meta'] - a declaration
+$invalid->asColumns(tablename: 'users');      // [] - nothing passed
+```
+
+The single-table case, for contrast — no `#[Table]` anywhere:
+
+```php
 $token->tables();                             // null
 $token->asColumns();                          // every column
 $token->asColumns(tablename: 'tokens');       // the same, the name is simply its own
 ```
-
-A DTO whose fields all failed validation has nothing under any of its tables
-either, so it too answers `null`; ask `isValid()` to tell that apart. `tables()`
-is unaffected — it reads the class's declarations, not the instance's data.
 
 ### Compound and per-table keys
 

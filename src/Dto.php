@@ -345,10 +345,11 @@ class Dto implements JsonSerializable
      * Omitting it throws, because there is no sensible default - see tables()
      * for what a class will answer to.
      *
-     * Null means the class names tables and has nothing under the one asked
-     * for: a mistyped table name or the wrong Dto for the job. A Dto whose
-     * fields all failed validation has nothing under any of its tables either,
-     * so it too answers null; ask isValid() to tell that apart.
+     * A table the class does not name throws too - a mistyped table name or
+     * the wrong Dto for the job, either way a bug rather than a value. What it
+     * names is fixed at the class's first construction, so this is the same
+     * answer for every instance. A table it does name but has nothing valid
+     * under comes back empty, which is a reading of the data and not a bug.
      *
      * Pass $withoutPrimary = true to drop the #[IsPrimary] column — the
      * shape for insert/update SET clauses, where the primary is
@@ -360,10 +361,10 @@ class Dto implements JsonSerializable
      *
      * @param bool $withoutPrimary When true the #[IsPrimary] properties' columns are removed
      * @param ?string $tablename The table asking - required when the class names any
-     * @return ($tablename is null ? array : ?array) Column names to validated values; null when the class has nothing under $tablename
-     * @throws LogicException When the class names tables and no $tablename was given
+     * @return array Column names to validated values, empty when nothing valid landed under $tablename
+     * @throws LogicException When the class names tables and $tablename is missing or not one of them
      */
-    public function asColumns(bool $withoutPrimary = false, ?string $tablename = null): ?array
+    public function asColumns(bool $withoutPrimary = false, ?string $tablename = null): array
     {
         $columns = $this->db['columns'];
         $scoped = false;
@@ -373,11 +374,13 @@ class Dto implements JsonSerializable
                 throw new LogicException(static::class . ' names ' . count($tables) . ' table(s) (' . implode(', ', $tables) . '); asColumns() needs to know which one is asking - pass $tablename.');
             }
 
-            if (!isset($this->db['tables'][$tablename])) {
-                return null;
+            if (!in_array($tablename, $tables, true)) {
+                throw new LogicException(static::class . ' has no table "' . $tablename . '" - it names ' . implode(', ', $tables) . '.');
             }
 
-            $columns = $this->db['tables'][$tablename];
+            // named but empty is a reading of the data, not a bug: nothing
+            // tagged for this table passed validation
+            $columns = $this->db['tables'][$tablename] ?? [];
             $scoped = true;
         }
 
