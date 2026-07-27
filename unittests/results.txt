@@ -27,9 +27,15 @@ Dto
  [x] Optional field still validates when provided
  [x] Required field still fails when absent
  [x] Primary returns column name of is primary property
- [x] Primary falls back to field name without column
+ [x] Primary names the column not the input field
  [x] Primary is null without is primary
- [x] Primary last tagged property wins
+ [x] A compound key keeps every tagged property
+ [x] The singular primary throws on a compound key
+ [x] A compound key goes whole under without primary
+ [x] Each table can carry its own primary
+ [x] Without primary scoped to a table drops only that tables key
+ [x] A tablename is ignored by a class that tags no table
+ [x] A primary that failed validation has no value
  [x] Protected set property is assigned by the engine
  [x] Protected set property rejects external writes
  [x] Only returns just the requested properties

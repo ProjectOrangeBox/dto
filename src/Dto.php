@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace orange\dto;
 
 use JsonSerializable;
+use LogicException;
 use orange\dto\DtoAttribute;
 use ReflectionClass;
 use ReflectionProperty;
@@ -41,8 +42,7 @@ class Dto implements JsonSerializable
      * One compiled blueprint per concrete Dto class, shared by every instance.
      *
      * [class => [
-     *     'primary' => ?string,
-     *     'primaryProperty' => ?string,
+     *     'primaries' => [property, ...],  // the #[IsPrimary] properties, in declaration order
      *     'usesTables' => bool,    // does any property carry a #[Table]?
      *     'properties' => [property => [
      *         'fieldName' => string,   // input key (FieldName attribute or property name)
@@ -59,7 +59,6 @@ class Dto implements JsonSerializable
 
     protected array $errors = [];
     protected array $db = ['tables' => [], 'columns' => []];
-    protected ?string $primary = null;
     protected array $array = [];
     protected array $keys = [];
 
@@ -74,8 +73,6 @@ class Dto implements JsonSerializable
     public function __construct(protected array $input)
     {
         $blueprint = self::$blueprints[static::class] ??= self::compile(static::class);
-
-        $this->primary = $blueprint['primary'];
 
         foreach ($blueprint['properties'] as $property => $meta) {
             $this->process($property, $meta);
@@ -257,16 +254,50 @@ class Dto implements JsonSerializable
     }
 
     /**
-     * Returns the primary key's column name — the #[Column] name of the
-     * property tagged #[IsPrimary], falling back to its resolved field name
-     * when no Column attribute is present. When multiple properties are
-     * tagged, the last one declared wins — there is only one primary.
+     * Returns the primary key columns, in declaration order.
      *
-     * @return ?string The primary key column name, or null when no property is tagged
+     * A class may tag more than one property #[IsPrimary]: several in one table
+     * make a compound key, and one per table gives a multi-table Dto a key for
+     * each. Name a table to get only that table's — a model wants its own key,
+     * not every key the Dto happens to carry. A class that tags no #[Table] at
+     * all has only the one table it was written for, so a $tablename matches
+     * all of its primaries whatever it is called.
+     *
+     * Column names, resolved exactly as asColumns() keys them, so
+     * array_keys(primaryValues()) always equals primaries().
+     *
+     * @param ?string $tablename Restrict to the primaries of this table
+     * @return array<int, string> The primary key column names, empty when none is tagged
      */
-    public function primary(): ?string
+    public function primaries(?string $tablename = null): array
     {
-        return $this->primary;
+        $columns = [];
+
+        foreach ($this->primaryMetas($tablename) as $meta) {
+            $columns[] = $meta['column'];
+        }
+
+        return $columns;
+    }
+
+    /**
+     * Returns the primary key's column name when there is exactly one.
+     *
+     * The singular door, for the ordinary single-key record. A compound key has
+     * no single answer, so it throws rather than naming half of one — ask
+     * primaries() instead, or narrow to a table.
+     *
+     * @param ?string $tablename Restrict to the primaries of this table
+     * @return ?string The primary key column name, or null when none is tagged
+     * @throws LogicException When the class (or the named table) has more than one primary
+     */
+    public function primary(?string $tablename = null): ?string
+    {
+        $this->assertOnePrimary('primary', 'primaries', $tablename);
+
+        $columns = $this->primaries($tablename);
+
+        return $columns === [] ? null : $columns[0];
     }
 
     /**
@@ -336,27 +367,58 @@ class Dto implements JsonSerializable
             }
         }
 
-        if ($withoutPrimary && ($meta = $this->primaryMeta()) !== null && (!$scoped || $meta['table'] === $tablename)) {
-            unset($columns[$meta['column']]);
+        if ($withoutPrimary) {
+            // every primary in what is being returned, so a compound key goes
+            // whole. Unscoped that is all of them; scoped, only this table's -
+            // a second table keeping its own `id` column keeps it
+            foreach ($this->primaryMetas($scoped ? $tablename : null) as $meta) {
+                unset($columns[$meta['column']]);
+            }
         }
 
         return $columns;
     }
 
     /**
-     * Returns the #[IsPrimary] property's compiled blueprint entry.
+     * Returns the #[IsPrimary] properties' compiled blueprint entries, keyed by
+     * property name and in declaration order.
      *
-     * The authoritative source for the primary's true table and column keys
-     * in the db shapes — unlike primary(), which falls back to the field
-     * name without a #[Column] attribute.
+     * The authoritative source for a primary's true table and column keys in
+     * the db shapes.
      *
-     * @return ?array The blueprint entry, or null when no property is tagged
+     * @param ?string $tablename Restrict to the primaries of this table
+     * @return array<string, array> The blueprint entries, empty when none is tagged
      */
-    private function primaryMeta(): ?array
+    private function primaryMetas(?string $tablename = null): array
     {
-        $property = self::$blueprints[static::class]['primaryProperty'];
+        $blueprint = self::$blueprints[static::class];
+        $metas = [];
 
-        return $property === null ? null : self::$blueprints[static::class]['properties'][$property];
+        foreach ($blueprint['primaries'] as $property) {
+            $meta = $blueprint['properties'][$property];
+
+            // a class that names no table at all has only the one table it was
+            // written for, so its primaries answer to any name the caller asks by
+            if ($tablename === null || !$blueprint['usesTables'] || $meta['table'] === $tablename) {
+                $metas[$property] = $meta;
+            }
+        }
+
+        return $metas;
+    }
+
+    /**
+     * Guards the singular primary()/primaryValue() against a compound key.
+     *
+     * @throws LogicException When the scope holds more than one primary
+     */
+    private function assertOnePrimary(string $method, string $plural, ?string $tablename): void
+    {
+        $columns = $this->primaries($tablename);
+
+        if (count($columns) > 1) {
+            throw new LogicException(static::class . ' has ' . count($columns) . ' primary columns (' . implode(', ', $columns) . ')' . ($tablename === null ? '' : ' in table "' . $tablename . '"') . '; ' . $method . '() has no single answer - use ' . $plural . '() or name a table.');
+        }
     }
 
     /**
@@ -398,21 +460,54 @@ class Dto implements JsonSerializable
     }
 
     /**
-     * Returns the primary key's validated value.
+     * Returns the primary key's validated values, keyed by column name.
      *
-     * Resolved through the tagged property itself rather than primary()'s
-     * column name — primary() falls back to the field name without a
-     * #[Column] attribute, which need not match the asColumns() key, but
-     * the tagged property's validated value is always unambiguous. Null
-     * when no property is tagged #[IsPrimary] or when it failed validation.
+     * The shape a WHERE clause wants: keys match asColumns(), values come from
+     * the tagged property itself. A compound key comes back whole, in
+     * declaration order. Name a table for that table's key alone.
      *
-     * @return mixed The validated primary key value, or null
+     * A primary that failed validation has no value, so it is absent rather
+     * than null — count() against primaries() to tell a partial key from a
+     * whole one.
+     *
+     * @param ?string $tablename Restrict to the primaries of this table
+     * @return array<string, mixed> Column names to their validated values
      */
-    public function primaryValue(): mixed
+    public function primaryValues(?string $tablename = null): array
     {
-        $property = self::$blueprints[static::class]['primaryProperty'];
+        $values = [];
 
-        return $property === null ? null : ($this->array[$property] ?? null);
+        foreach ($this->primaryMetas($tablename) as $property => $meta) {
+            if (array_key_exists($property, $this->array)) {
+                $values[$meta['column']] = $this->array[$property];
+            }
+        }
+
+        return $values;
+    }
+
+    /**
+     * Returns the primary key's validated value when there is exactly one.
+     *
+     * The singular door, for the ordinary single-key record — null when no
+     * property is tagged #[IsPrimary] or when the tagged one failed validation.
+     * A compound key has no single value, so it throws rather than returning
+     * half of one; ask primaryValues() instead, or narrow to a table.
+     *
+     * @param ?string $tablename Restrict to the primaries of this table
+     * @return mixed The validated primary key value, or null
+     * @throws LogicException When the class (or the named table) has more than one primary
+     */
+    public function primaryValue(?string $tablename = null): mixed
+    {
+        // primaries(), not primaryValues() - an invalid primary must still
+        // count towards the ambiguity, or a compound key with one bad half
+        // would quietly answer with the other
+        $this->assertOnePrimary('primaryValue', 'primaryValues', $tablename);
+
+        $values = $this->primaryValues($tablename);
+
+        return $values === [] ? null : reset($values);
     }
 
     /**
@@ -475,7 +570,7 @@ class Dto implements JsonSerializable
      */
     private static function compile(string $class): array
     {
-        $blueprint = ['primary' => null, 'primaryProperty' => null, 'usesTables' => false, 'properties' => []];
+        $blueprint = ['primaries' => [], 'usesTables' => false, 'properties' => []];
 
         foreach (new ReflectionClass($class)->getProperties(ReflectionProperty::IS_PUBLIC) as $property) {
             // collect the DtoAttribute attributes keyed by short name — a
@@ -521,12 +616,12 @@ class Dto implements JsonSerializable
             // at the class's first construction, not silently at storage time
             $dbCast = isset($byLowerName['dbcast']) ? $byLowerName['dbcast']->newInstance()->getName() : null;
 
-            // a property tagged #[IsPrimary] records its column name for primary();
-            // with no #[Column] attribute the resolved field name is used instead.
-            // a later tagged property always overwrites — there is only one primary
+            // every property tagged #[IsPrimary] counts: several in one table
+            // make a compound key, one per table gives a multi-table Dto a key
+            // for each. The column name is read back off the blueprint entry, so
+            // primaries() names exactly what asColumns() keys by
             if (isset($byLowerName['isprimary'])) {
-                $blueprint['primary'] = isset($byLowerName['column']) ? $column : $fieldName;
-                $blueprint['primaryProperty'] = $propertyName;
+                $blueprint['primaries'][] = $propertyName;
             }
 
             // keep only the attributes that actually validate or filter;

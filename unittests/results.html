@@ -81,9 +81,15 @@
             <li class="success">Optional field still validates when provided</li>
             <li class="success">Required field still fails when absent</li>
             <li class="success">Primary returns column name of is primary property</li>
-            <li class="success">Primary falls back to field name without column</li>
+            <li class="success">Primary names the column not the input field</li>
             <li class="success">Primary is null without is primary</li>
-            <li class="success">Primary last tagged property wins</li>
+            <li class="success">A compound key keeps every tagged property</li>
+            <li class="success">The singular primary throws on a compound key</li>
+            <li class="success">A compound key goes whole under without primary</li>
+            <li class="success">Each table can carry its own primary</li>
+            <li class="success">Without primary scoped to a table drops only that tables key</li>
+            <li class="success">A tablename is ignored by a class that tags no table</li>
+            <li class="success">A primary that failed validation has no value</li>
             <li class="success">Protected set property is assigned by the engine</li>
             <li class="success">Protected set property rejects external writes</li>
             <li class="success">Only returns just the requested properties</li>

@@ -552,7 +552,7 @@ final class DtoTest extends unitTestHelper
         $this->assertSame('records_pk', $request->primary());
     }
 
-    public function testPrimaryFallsBackToFieldNameWithoutColumn(): void
+    public function testPrimaryNamesTheColumnNotTheInputField(): void
     {
         $request = new class(['record_id' => 5]) extends Dto {
             #[IsPrimary]
@@ -561,7 +561,11 @@ final class DtoTest extends unitTestHelper
             public int $id;
         };
 
-        $this->assertSame('record_id', $request->primary());
+        // #[FieldName] renames the input key, not the column - primary() names
+        // what asColumns() keys by, so the two can never disagree
+        $this->assertSame('id', $request->primary());
+        $this->assertSame(['id' => 5], $request->primaryValues());
+        $this->assertSame(array_keys($request->primaryValues()), $request->primaries());
     }
 
     public function testPrimaryIsNullWithoutIsPrimary(): void
@@ -574,20 +578,163 @@ final class DtoTest extends unitTestHelper
         $this->assertNull($request->primary());
     }
 
-    public function testPrimaryLastTaggedPropertyWins(): void
+    public function testACompoundKeyKeepsEveryTaggedProperty(): void
     {
-        $request = new class(['a' => 1, 'b' => 2]) extends Dto {
-            #[IsPrimary]
-            #[ToInteger]
-            public int $a;
+        $request = $this->compoundKeyRequest();
 
+        // declaration order, and the keys asColumns() uses
+        $this->assertSame(['order_id', 'line_no'], $request->primaries());
+        $this->assertSame(['order_id' => 7, 'line_no' => 2], $request->primaryValues());
+    }
+
+    /**
+     * The singular doors have no answer for a compound key, so they say so
+     * rather than naming half of one - which fed to a WHERE would match rows
+     * the caller never meant.
+     */
+    public function testTheSingularPrimaryThrowsOnACompoundKey(): void
+    {
+        $request = $this->compoundKeyRequest();
+
+        try {
+            $request->primary();
+
+            $this->fail('expected LogicException');
+        } catch (\LogicException $e) {
+            $this->assertStringContainsString('2 primary columns (order_id, line_no)', $e->getMessage());
+            $this->assertStringContainsString('use primaries()', $e->getMessage());
+        }
+
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('use primaryValues()');
+
+        $request->primaryValue();
+    }
+
+    public function testACompoundKeyGoesWholeUnderWithoutPrimary(): void
+    {
+        $request = $this->compoundKeyRequest();
+
+        $this->assertSame(['order_id' => 7, 'line_no' => 2, 'sku' => 'A1'], $request->asColumns());
+
+        // both halves go, not just one
+        $this->assertSame(['sku' => 'A1'], $request->asColumns(withoutPrimary: true));
+    }
+
+    /**
+     * One key per table: each model asks for its own and gets an unambiguous
+     * answer, while the whole-Dto question stays ambiguous on purpose.
+     */
+    public function testEachTableCanCarryItsOwnPrimary(): void
+    {
+        $request = $this->twoTableKeyRequest();
+
+        $this->assertSame(['id'], $request->primaries('users'));
+        $this->assertSame(['user_id'], $request->primaries('user_meta'));
+
+        $this->assertSame('id', $request->primary('users'));
+        $this->assertSame(7, $request->primaryValue('users'));
+        $this->assertSame(['user_id' => 7], $request->primaryValues('user_meta'));
+
+        // unscoped there are two, so the singular doors refuse
+        $this->assertSame(['id', 'user_id'], $request->primaries());
+        $this->expectException(\LogicException::class);
+
+        $request->primary();
+    }
+
+    public function testWithoutPrimaryScopedToATableDropsOnlyThatTablesKey(): void
+    {
+        $request = $this->twoTableKeyRequest();
+
+        $this->assertSame(['name' => 'Ada'], $request->asColumns(true, 'users'));
+        $this->assertSame(['bio' => 'Engineer'], $request->asColumns(true, 'user_meta'));
+
+        // and unscoped, every table's primary goes
+        $this->assertSame(['name' => 'Ada', 'bio' => 'Engineer'], $request->asColumns(true));
+    }
+
+    /**
+     * A class that names no table has only the one it was written for, so a
+     * $tablename does not have to match anything for its key to answer.
+     */
+    public function testATablenameIsIgnoredByAClassThatTagsNoTable(): void
+    {
+        $request = new class(['id' => '42']) extends Dto {
             #[IsPrimary]
-            #[Column('b_pk')]
             #[ToInteger]
-            public int $b;
+            public int $id;
         };
 
-        $this->assertSame('b_pk', $request->primary());
+        $this->assertSame(['id'], $request->primaries('whatever'));
+        $this->assertSame(42, $request->primaryValue('whatever'));
+    }
+
+    public function testAPrimaryThatFailedValidationHasNoValue(): void
+    {
+        $request = new class(['orderId' => 7]) extends Dto {
+            #[IsPrimary]
+            #[IsRequired]
+            #[ToInteger]
+            #[Column('order_id')]
+            public int $orderId;
+
+            #[IsPrimary]
+            #[IsRequired]
+            #[ToInteger]
+            #[Column('line_no')]
+            public int $lineNo;
+        };
+
+        $this->assertFalse($request->isValid());
+
+        // the half that validated is there, the half that did not is absent -
+        // count it against primaries() to see the key is incomplete
+        $this->assertSame(['order_id' => 7], $request->primaryValues());
+        $this->assertCount(2, $request->primaries());
+    }
+
+    private function compoundKeyRequest(): Dto
+    {
+        return new class(['orderId' => '7', 'lineNo' => '2', 'sku' => 'A1']) extends Dto {
+            #[IsPrimary]
+            #[ToInteger]
+            #[Column('order_id')]
+            public int $orderId;
+
+            #[IsPrimary]
+            #[ToInteger]
+            #[Column('line_no')]
+            public int $lineNo;
+
+            #[IsRequired]
+            public string $sku;
+        };
+    }
+
+    private function twoTableKeyRequest(): Dto
+    {
+        return new class(['id' => '7', 'name' => 'Ada', 'userId' => '7', 'bio' => 'Engineer']) extends Dto {
+            #[IsPrimary]
+            #[ToInteger]
+            #[Column('id')]
+            #[Table('users')]
+            public int $id;
+
+            #[IsRequired]
+            #[Table('users')]
+            public string $name;
+
+            #[IsPrimary]
+            #[ToInteger]
+            #[Column('user_id')]
+            #[Table('user_meta')]
+            public int $userId;
+
+            #[IsRequired]
+            #[Table('user_meta')]
+            public string $bio;
+        };
     }
 
     public function testProtectedSetPropertyIsAssignedByTheEngine(): void
@@ -730,7 +877,7 @@ final class DtoTest extends unitTestHelper
             public int $id;
         };
 
-        $this->assertSame('record_id', $request->primary());
+        $this->assertSame('id', $request->primary());
         $this->assertSame(['id' => 5], $request->asColumns());
         $this->assertSame([], $request->asColumns(withoutPrimary: true));
     }

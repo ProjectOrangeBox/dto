@@ -185,6 +185,50 @@ $token->asColumns(tablename: 'tokens', orAllColumns: true);  // every column
 A DTO whose fields all failed validation has nothing under any table either, so
 it answers `null` as well; ask `isValid()` to tell that apart.
 
+### Compound and per-table keys
+
+More than one property may be tagged `#[IsPrimary]`: several in one table make a
+compound key, and one per `#[Table]` gives a multi-table DTO a key for each.
+`primaries()` and `primaryValues()` return them all, in declaration order and
+keyed exactly as `asColumns()` keys them — `array_keys($dto->primaryValues())`
+always equals `$dto->primaries()`.
+
+The singular `primary()`/`primaryValue()` are for the ordinary single-key
+record. Faced with more than one they **throw a `LogicException`** rather than
+answer with half a key, which fed to a WHERE clause would match rows you never
+meant. Narrow them with a table name, or ask the plural form:
+
+```php
+class OrderLineDto extends Dto
+{
+    #[IsPrimary] #[Column('order_id')] public int $orderId;
+    #[IsPrimary] #[Column('line_no')]  public int $lineNo;
+    #[IsRequired]                      public string $sku;
+}
+
+$line->primaries();                      // ['order_id', 'line_no']
+$line->primaryValues();                  // ['order_id' => 7, 'line_no' => 2]
+$line->primary();                        // LogicException - use primaries()
+$line->asColumns(withoutPrimary: true);  // ['sku' => 'A1'] - both halves go
+```
+
+With `#[Table]`, each table's key is asked for by name — and `$withoutPrimary`
+drops only the key of the table in scope, so a second table keeping its own `id`
+column keeps it:
+
+```php
+$profile->primaryValue('users');          // 7
+$profile->primaryValues('user_meta');     // ['user_id' => 7]
+$profile->primaryValue();                 // LogicException - two of them
+$profile->asColumns(true, 'users');       // users' columns, minus users' key
+```
+
+A class that tags no `#[Table]` at all has only the one table it was written
+for, so its key answers to any `$tablename` the caller asks by.
+
+A primary that failed validation is **absent** from `primaryValues()` rather
+than null — compare its `count()` against `primaries()` to spot a partial key.
+
 `$withoutPrimary` produces the shape for insert/update SET clauses — the
 primary is auto-assigned on insert and targeted through the WHERE on update,
 so it is never a SET column:
@@ -222,8 +266,10 @@ internal bookkeeping structures.
 | `invalidKeys(bool $raw = true): array` | keys of fields that failed |
 | `validInputKeys(): array` | passed fields, as resolved input field names |
 | `invalidInputKeys(): array` | failed fields, as resolved input field names |
-| `primary(): ?string` | column name of the `#[IsPrimary]` property — its `#[Column]` name, else its resolved field name; `null` when none is tagged |
-| `primaryValue(): mixed` | the `#[IsPrimary]` property's **validated value** — `null` when none is tagged or it failed validation |
+| `primaries(?string $tablename = null): array` | the `#[IsPrimary]` columns, in declaration order; empty when none is tagged |
+| `primaryValues(?string $tablename = null): array` | those columns to their **validated values** — a primary that failed validation is absent |
+| `primary(?string $tablename = null): ?string` | the one `#[IsPrimary]` column; `null` when none is tagged, **throws** when there is more than one |
+| `primaryValue(?string $tablename = null): mixed` | the one primary's **validated value** — `null` when none is tagged or it failed; **throws** when there is more than one |
 
 By default (`$raw = true`) these return the **raw property names**. Pass `false`
 — or use the `*InputKeys()` wrappers — to get the resolved input field names (the
@@ -273,7 +319,7 @@ $request->asColumns(tablename: 'audit');
 | `#[Column('col')]` | column name used by `asColumns()` (defaults to property name) |
 | `#[Table('name', 'database')]` | the table this property belongs to, which `asColumns($tablename)` filters on; optional database identifier. Without it — or with an empty name — the property belongs to no table and only ever appears in an unfiltered `asColumns()` |
 | `#[Label('Human Name')]` | name used in error messages (defaults to property name) |
-| `#[IsPrimary]` | tags the property holding the record's primary key — a pure marker. Its column name is retrievable via `primary()`. When multiple properties are tagged the last declared wins — there is only one primary |
+| `#[IsPrimary]` | tags a property holding part of the record's primary key — a pure marker. Retrievable via `primaries()`/`primaryValues()`. Several tagged properties make a [compound or per-table key](#compound-and-per-table-keys) |
 | `#[DbCast('int')]` | scalar cast (`int`, `float`, `string`, `bool`) applied to the value in `asColumns()` **only** — the typed property, `asArray()`, and JSON keep the domain value. `null` is never cast. An unknown target throws `InvalidArgumentException` at the class's first construction |
 
 ### Domain vs. storage types — `DbCast`
