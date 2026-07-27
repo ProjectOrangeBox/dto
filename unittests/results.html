@@ -57,9 +57,11 @@
             <li class="success">Valid request assigns typed properties</li>
             <li class="success">As array is keyed by property name</li>
             <li class="success">As columns is keyed by column name</li>
-            <li class="success">As table groups by table name</li>
-            <li class="success">As table can return a single table</li>
-            <li class="success">As table throws for unknown table</li>
+            <li class="success">As columns can be restricted to one table</li>
+            <li class="success">As columns returns null for a table the class does not name</li>
+            <li class="success">Each table gets only the properties tagged for it</li>
+            <li class="success">A class that tags no table answers null or everything</li>
+            <li class="success">A bare table attribute counts as no table</li>
             <li class="success">Invalid request reports errors by field name</li>
             <li class="success">Invalid fields are excluded from output</li>
             <li class="success">A single field can fail while others succeed</li>
@@ -96,7 +98,7 @@
             <li class="success">As columns without primary drops the primary column</li>
             <li class="success">As columns without primary uses the true column key</li>
             <li class="success">As columns without primary is a no op when none is tagged</li>
-            <li class="success">As table without primary drops it from its table only</li>
+            <li class="success">Without primary drops it from its own table only</li>
             <li class="success">Db cast applies to db shapes only</li>
             <li class="success">Db cast never casts null</li>
             <li class="success">Db cast rejects an unknown target at compile time</li>

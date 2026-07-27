@@ -32,7 +32,7 @@ use ReflectionProperty;
  * SOLID Principles Applied:
  * - Single Responsibility: Handles only input validation and data organization
  * - Open/Closed: Extensible through DtoAttribute annotations without modifying core logic
- * - Interface Segregation: Provides multiple access methods (asArray, asTable, asColumns, only, except) for client flexibility
+ * - Interface Segregation: Provides multiple access methods (asArray, asColumns, only, except) for client flexibility
  * - Dependency Inversion: Depends on DtoAttribute abstraction rather than concrete validators
  */
 class Dto implements JsonSerializable
@@ -43,10 +43,11 @@ class Dto implements JsonSerializable
      * [class => [
      *     'primary' => ?string,
      *     'primaryProperty' => ?string,
+     *     'usesTables' => bool,    // does any property carry a #[Table]?
      *     'properties' => [property => [
      *         'fieldName' => string,   // input key (FieldName attribute or property name)
      *         'column' => string,      // db column (Column attribute or property name)
-     *         'table' => string,       // db table (Table attribute or property name)
+     *         'table' => ?string,      // db table (Table attribute) or null when untagged
      *         'label' => string,       // human name (Label attribute or property name)
      *         'dbCast' => ?string,     // db-shape cast target (DbCast attribute) or null
      *         'dtoArray' => ?string,   // child Dto class (IsArray with a class) or null
@@ -242,14 +243,17 @@ class Dto implements JsonSerializable
     /**
      * Returns the resolved database table name for a property.
      *
-     * Falls back to the property name when no Table attribute is present.
+     * Null when the property carries no #[Table] - it belongs to no table, which
+     * is exactly why asColumns() files it under none. Unlike column() and label(),
+     * there is no property-name fallback: inventing a table name here would name
+     * a table the property is not in.
      *
      * @param string $property The property name to resolve
-     * @return string The configured table name or the property name
+     * @return ?string The configured table name, or null when the property declares none
      */
-    public function table(string $property): string
+    public function table(string $property): ?string
     {
-        return self::$blueprints[static::class]['properties'][$property]['table'] ?? $property;
+        return self::$blueprints[static::class]['properties'][$property]['table'] ?? null;
     }
 
     /**
@@ -279,54 +283,60 @@ class Dto implements JsonSerializable
     }
 
     /**
-     * Returns validated data organized by database table structure.
-     *
-     * Pass $withoutPrimary = true to drop the #[IsPrimary] column from its
-     * table — the shape for insert/update SET clauses, where the primary is
-     * auto-assigned or targeted through the WHERE instead.
-     *
-     * @param false|string $tablename Optional table name to retrieve specific table data; returns all tables if false
-     * @param bool $withoutPrimary When true the #[IsPrimary] property's column is removed from its table
-     * @return array The table or column data structure
-     * @throws \OutOfBoundsException When the requested table name is not found
-     */
-    public function asTable(false|string $tablename = false, bool $withoutPrimary = false): array
-    {
-        $db = $this->db['tables'];
-
-        if ($withoutPrimary && ($meta = $this->primaryMeta()) !== null) {
-            unset($db[$meta['table']][$meta['column']]);
-        }
-
-        if ($tablename) {
-            if (!isset($db[$tablename])) {
-                throw new \OutOfBoundsException('Table ' . $tablename . ' not found.');
-            }
-
-            $db = $db[$tablename];
-        }
-
-        return $db;
-    }
-
-    /**
      * Returns validated data organized by column name.
+     *
+     * With no $tablename this is the whole record: every valid property,
+     * whether or not it carries a #[Table].
+     *
+     * Name a table and you get only the properties tagged #[Table] for it,
+     * which is what lets one Dto describe a whole form spanning several tables
+     * and each model take the columns that are its own. What comes back when
+     * the class has nothing under that name depends on why:
+     *
+     *   - the class tags no table anywhere - it was written for a single model
+     *     and had no reason to name it. Null, or every column when the caller
+     *     passes $orAllColumns, which is that caller saying "an untagged Dto is
+     *     all mine".
+     *   - the class does name tables, just not this one. Null, and $orAllColumns
+     *     does not override it: a Dto that speaks for other tables and not
+     *     yours is a wiring mistake - a mistyped table name, most likely - and
+     *     answering it with another table's columns would write them into yours.
+     *
+     * A Dto whose fields all failed validation has nothing under any table
+     * either, so it too answers null; ask isValid() to tell that apart.
      *
      * Pass $withoutPrimary = true to drop the #[IsPrimary] column — the
      * shape for insert/update SET clauses, where the primary is
      * auto-assigned or targeted through the WHERE instead. Removal is
      * resolved through the tagged property's blueprint entry, so it is
      * immune to primary()'s field-name fallback diverging from the
-     * asColumns() key.
+     * asColumns() key. Under a $tablename only that property's own table
+     * loses it, so a second table keeping its own `id` column keeps it.
      *
      * @param bool $withoutPrimary When true the #[IsPrimary] property's column is removed
-     * @return array An associative array of column names to their validated values
+     * @param ?string $tablename Restrict to the properties tagged #[Table] for this table
+     * @param bool $orAllColumns Return every column when the class tags no table at all
+     * @return ($tablename is null ? array : ?array) Column names to validated values; null only when a $tablename was named and the class has nothing under it
      */
-    public function asColumns(bool $withoutPrimary = false): array
+    public function asColumns(bool $withoutPrimary = false, ?string $tablename = null, bool $orAllColumns = false): ?array
     {
         $columns = $this->db['columns'];
+        $scoped = false;
 
-        if ($withoutPrimary && ($meta = $this->primaryMeta()) !== null) {
+        if ($tablename !== null) {
+            if (self::$blueprints[static::class]['usesTables']) {
+                if (!isset($this->db['tables'][$tablename])) {
+                    return null;
+                }
+
+                $columns = $this->db['tables'][$tablename];
+                $scoped = true;
+            } elseif (!$orAllColumns) {
+                return null;
+            }
+        }
+
+        if ($withoutPrimary && ($meta = $this->primaryMeta()) !== null && (!$scoped || $meta['table'] === $tablename)) {
             unset($columns[$meta['column']]);
         }
 
@@ -465,7 +475,7 @@ class Dto implements JsonSerializable
      */
     private static function compile(string $class): array
     {
-        $blueprint = ['primary' => null, 'primaryProperty' => null, 'properties' => []];
+        $blueprint = ['primary' => null, 'primaryProperty' => null, 'usesTables' => false, 'properties' => []];
 
         foreach (new ReflectionClass($class)->getProperties(ReflectionProperty::IS_PUBLIC) as $property) {
             // collect the DtoAttribute attributes keyed by short name — a
@@ -498,7 +508,14 @@ class Dto implements JsonSerializable
             // resolve the metadata to plain strings, defaulting to the property name
             $fieldName = isset($byLowerName['fieldname']) ? $byLowerName['fieldname']->newInstance()->getName() : $propertyName;
             $column = isset($byLowerName['column']) ? $byLowerName['column']->newInstance()->getName() : $propertyName;
-            $table = isset($byLowerName['table']) ? $byLowerName['table']->newInstance()->getName() : $propertyName;
+            // no #[Table] means the property belongs to no table in particular, so
+            // asColumns() never files it under one. An empty name (a bare #[Table])
+            // says as little as no attribute at all
+            $table = isset($byLowerName['table']) ? ($byLowerName['table']->newInstance()->getName() ?: null) : null;
+
+            // whether the class names tables at all decides how asColumns()
+            // answers for a table it has nothing for - see $orAllColumns
+            $blueprint['usesTables'] = $blueprint['usesTables'] || $table !== null;
             $label = isset($byLowerName['label']) ? $byLowerName['label']->newInstance()->getName() : $propertyName;
             // instantiating DbCast validates its target — a typo throws here,
             // at the class's first construction, not silently at storage time
@@ -623,18 +640,21 @@ class Dto implements JsonSerializable
      * Assigns the validated value to the class property, and stores it in the
      * array and database table/column structures for flexible data access.
      * A DbCast target applies to the db shapes only — the property and array
-     * keep the domain value while asColumns()/asTable() carry the storage
+     * keep the domain value while asColumns() carries the storage
      * value (e.g. a bool property stored as 0/1).
      *
      * A dto-array property keeps the child Dto objects on the property while
      * asArray()/json carry each child flattened through its own asArray() —
      * and it never reaches the db shapes, because a nested structure has no
      * single-row table/column representation. Extract the children and call
-     * asTable()/asColumns() on each one individually to persist them.
+     * asColumns() on each one individually to persist them.
+     *
+     * A property with no #[Table] is stored as a column but not under any
+     * table, so asColumns($tablename) only ever reports what a class claimed.
      *
      * @param string $property The property name to assign the value to
      * @param mixed $value The validated value to store
-     * @param string $table The database table name
+     * @param ?string $table The database table name, or null when the property declares none
      * @param string $column The database column name
      * @param ?string $dbCast Scalar cast target for the db shapes, or null for none
      * @param ?string $dtoArray Child Dto class for dto-array properties, or null
@@ -665,8 +685,12 @@ class Dto implements JsonSerializable
             default => $value,
         };
 
-        // if valid add it to the db array
-        $this->db['tables'][$table][$column] = $dbValue;
+        // if valid add it to the db array - the table shape only takes properties
+        // that named a table, the column shape takes them all
+        if ($table !== null) {
+            $this->db['tables'][$table][$column] = $dbValue;
+        }
+
         $this->db['columns'][$column] = $dbValue;
     }
 }

@@ -33,7 +33,7 @@ if ($request->isValid()) {
     var_dump($request->validInputKeys());
     var_dump($request->validKeys());
 
-    var_dump($request->asTable());
+    var_dump($request->asColumns(tablename: 'user'));
 } else {
     var_dump($request->validInputKeys());
     var_dump($request->validKeys());

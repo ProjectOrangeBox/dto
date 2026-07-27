@@ -10,7 +10,7 @@ publicly readable property with attributes, and the package will:
 - read each value from the incoming input array (by field name)
 - validate every value against the rules you declared
 - filter / cast values (trim, lower-case, cast to int, etc.)
-- expose the valid data as typed properties and as array / column / table shapes
+- expose the valid data as typed properties and as array / column shapes, per table or whole
 - collect human-readable error messages for anything that failed
 
 > **Status:** work in progress. The public API described here is stable and
@@ -136,13 +136,54 @@ public int $qty;
 | `errors(): array` | `['fieldName' => ['message', ...], ...]` |
 | `allErrors(): array` | `errors()` plus [nested DTO](#nested-dtos) detail, dot-keyed: `['lines.1.sku' => [...], ...]` |
 | `asArray(): array` | valid values keyed by **property name** |
-| `asColumns(bool $withoutPrimary = false): array` | valid values keyed by **column name**; `true` drops the `#[IsPrimary]` column |
-| `asTable(false\|string $table = false, bool $withoutPrimary = false): array` | valid values grouped by **table** (all tables, or one named table); `true` drops the `#[IsPrimary]` column from its table |
+| `asColumns(bool $withoutPrimary = false, ?string $tablename = null, bool $orAllColumns = false): ?array` | valid values keyed by **column name**; `$withoutPrimary` drops the `#[IsPrimary]` column, `$tablename` restricts to the properties tagged `#[Table]` for that table |
 | `only(string ...$props): array` | `asArray()` restricted to the given property names |
 | `except(string ...$props): array` | `asArray()` without the given property names |
 | `input(?string $key = null, mixed $default = ''): mixed` | the raw, unprocessed input (whole array, or one key) |
 
-`asTable('name')` throws `\OutOfBoundsException` if the requested table does not exist.
+### One DTO, several tables
+
+Name a table and `asColumns()` returns only the properties tagged `#[Table]`
+for it. One class can then carry a whole form and each model take the columns
+that are its own:
+
+```php
+class UserProfile extends Dto
+{
+    #[IsRequired] #[Table('users')]
+    public string $name;
+
+    #[IsRequired] #[Table('user_meta')]
+    public string $bio;
+
+    #[IsRequired]                       // no table: nobody's column in particular
+    public string $confirmToken;
+}
+
+$request->asColumns(tablename: 'users');      // ['name' => 'Ada']
+$request->asColumns(tablename: 'user_meta');  // ['bio' => 'Engineer']
+$request->asColumns();                        // name, bio and confirmToken together
+```
+
+`null` is the answer when the class has nothing under that name, and **why**
+decides whether `$orAllColumns` can override it:
+
+```php
+// this class names tables, just not that one - a mistyped table name, most
+// likely. $orAllColumns does not rescue it: answering with another table's
+// columns would write them into yours
+$request->asColumns(tablename: 'sessions');                      // null
+$request->asColumns(tablename: 'sessions', orAllColumns: true);  // null
+
+// a class that tags nothing at all was written for a single model and had no
+// reason to name its table. $orAllColumns is the caller saying "then it is
+// all mine" - this is what orange/model's DtoModel does
+$token->asColumns(tablename: 'tokens');                      // null
+$token->asColumns(tablename: 'tokens', orAllColumns: true);  // every column
+```
+
+A DTO whose fields all failed validation has nothing under any table either, so
+it answers `null` as well; ask `isValid()` to tell that apart.
 
 `$withoutPrimary` produces the shape for insert/update SET clauses — the
 primary is auto-assigned on insert and targeted through the WHERE on update,
@@ -202,7 +243,9 @@ $request->table('color');     // 'user'
 $request->label('color');     // 'Favorite Color'
 ```
 
-Each falls back to the property name when the corresponding attribute is absent.
+`fieldName()`, `column()` and `label()` fall back to the property name when the
+corresponding attribute is absent. `table()` returns `null` instead — naming a
+table for an untagged property would name a table the property is not in.
 
 ## Output Shapes
 
@@ -215,11 +258,11 @@ $request->asArray();
 $request->asColumns();
 // ['name' => 'Johnny Appleseed', 'age' => 23, 'fav_color' => 'Orange']
 
-$request->asTable();
-// ['user' => ['name' => 'Johnny Appleseed', 'age' => 23, 'fav_color' => 'Orange']]
-
-$request->asTable('user');
+$request->asColumns(tablename: 'user');
 // ['name' => 'Johnny Appleseed', 'age' => 23, 'fav_color' => 'Orange']
+
+$request->asColumns(tablename: 'audit');
+// null - no property is tagged #[Table('audit')]
 ```
 
 ## Metadata Attributes
@@ -227,11 +270,11 @@ $request->asTable('user');
 | Attribute | Purpose |
 | --- | --- |
 | `#[FieldName('key')]` | input array key to read from (defaults to property name) |
-| `#[Column('col')]` | column name used by `asColumns()` / `asTable()` (defaults to property name) |
-| `#[Table('name', 'database')]` | table to group under in `asTable()`; optional database identifier |
+| `#[Column('col')]` | column name used by `asColumns()` (defaults to property name) |
+| `#[Table('name', 'database')]` | the table this property belongs to, which `asColumns($tablename)` filters on; optional database identifier. Without it — or with an empty name — the property belongs to no table and only ever appears in an unfiltered `asColumns()` |
 | `#[Label('Human Name')]` | name used in error messages (defaults to property name) |
 | `#[IsPrimary]` | tags the property holding the record's primary key — a pure marker. Its column name is retrievable via `primary()`. When multiple properties are tagged the last declared wins — there is only one primary |
-| `#[DbCast('int')]` | scalar cast (`int`, `float`, `string`, `bool`) applied to the value in `asColumns()` / `asTable()` **only** — the typed property, `asArray()`, and JSON keep the domain value. `null` is never cast. An unknown target throws `InvalidArgumentException` at the class's first construction |
+| `#[DbCast('int')]` | scalar cast (`int`, `float`, `string`, `bool`) applied to the value in `asColumns()` **only** — the typed property, `asArray()`, and JSON keep the domain value. `null` is never cast. An unknown target throws `InvalidArgumentException` at the class's first construction |
 
 ### Domain vs. storage types — `DbCast`
 
@@ -509,8 +552,8 @@ $request->asArray();
 ```
 
 The db shapes are the exception: a nested structure has no single-row
-table/column representation, so `asColumns()` / `asTable()` on the parent
-skip dto-array properties entirely. Persist the children individually:
+table/column representation, so `asColumns()` on the parent skips dto-array
+properties entirely. Persist the children individually:
 
 ```php
 foreach ($request->lines as $line) {
@@ -549,13 +592,15 @@ output a literal percent sign.
   writable properties.
 - **Only valid fields appear in output.** A field that fails validation is not
   assigned to its typed property (reading it throws an "uninitialized" error) and
-  is excluded from `asArray()` / `asColumns()` / `asTable()`.
+  is excluded from `asArray()` / `asColumns()`.
 - **Typed properties must match filtered values.** If a property is typed `int`,
   make sure a cast filter such as `#[ToInteger]` runs, otherwise assigning a
   string will raise a `TypeError`.
-- **Every valid field is mapped into every output.** A field with no `#[Table]` /
-  `#[Column]` still appears in `asTable()` / `asColumns()` under its property name.
-  Filter such fields (e.g. a password confirmation) out downstream.
+- **A field with no `#[Column]` still appears in `asArray()` / `asColumns()`**
+  under its property name — filter such fields (e.g. a password confirmation)
+  out downstream. `#[Table]` is the one exception with no property-name
+  fallback: an untagged field belongs to no table, so `asColumns('name')`
+  never returns it and `table('field')` returns `null`.
 - **Format validators always run.** There is no "sometimes" concept — a format
   validator like `#[ValidEmail]` will fail on an empty value even alongside
   `#[RequiredIf]`. Pair conditional rules with presence-only checks.
@@ -599,7 +644,7 @@ class UserController extends BaseController
             // handle $request->errors() however this controller reports failures
         }
 
-        // ... persist $request->asColumns() / asTable('user') ...
+        // ... persist $request->asColumns(tablename: 'user') ...
 
         return '';
     }
@@ -684,7 +729,7 @@ class UserApiController extends JsonController
             return $this->response('validationFail'); // 406
         }
 
-        // ... persist $request->asColumns() / asTable('user') ...
+        // ... persist $request->asColumns(tablename: 'user') ...
 
         $this->data = $request->asArray();
 

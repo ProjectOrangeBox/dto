@@ -133,11 +133,11 @@ final class DtoArrayTest extends unitTestHelper
 
         // the parent shapes never contain the nested structure
         $this->assertSame(['customer' => 'Johnny Appleseed'], $request->asColumns());
-        $this->assertSame(['orders' => ['customer' => 'Johnny Appleseed']], $request->asTable());
+        $this->assertSame(['customer' => 'Johnny Appleseed'], $request->asColumns(tablename: 'orders'));
 
         // each child is persisted individually through its own shapes
         $this->assertSame(['sku' => 'A1', 'qty' => 2], $request->lines[0]->asColumns());
-        $this->assertSame(['order_lines' => ['sku' => 'B2', 'qty' => 1]], $request->lines[1]->asTable());
+        $this->assertSame(['sku' => 'B2', 'qty' => 1], $request->lines[1]->asColumns(tablename: 'order_lines'));
     }
 
     public function testInvalidChildIsSingleParentError(): void

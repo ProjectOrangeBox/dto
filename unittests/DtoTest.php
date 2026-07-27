@@ -150,20 +150,7 @@ final class DtoTest extends unitTestHelper
         ], $request->asColumns());
     }
 
-    public function testAsTableGroupsByTableName(): void
-    {
-        $request = new ProfileRequest($this->validProfileInput());
-
-        $this->assertSame([
-            'user' => [
-                'name' => 'Johnny Appleseed',
-                'age' => 23,
-                'fav_color' => 'Orange',
-            ],
-        ], $request->asTable());
-    }
-
-    public function testAsTableCanReturnASingleTable(): void
+    public function testAsColumnsCanBeRestrictedToOneTable(): void
     {
         $request = new ProfileRequest($this->validProfileInput());
 
@@ -171,17 +158,84 @@ final class DtoTest extends unitTestHelper
             'name' => 'Johnny Appleseed',
             'age' => 23,
             'fav_color' => 'Orange',
-        ], $request->asTable('user'));
+        ], $request->asColumns(tablename: 'user'));
     }
 
-    public function testAsTableThrowsForUnknownTable(): void
+    public function testAsColumnsReturnsNullForATableTheClassDoesNotName(): void
     {
         $request = new ProfileRequest($this->validProfileInput());
 
-        $this->expectException(\OutOfBoundsException::class);
-        $this->expectExceptionMessage('Table missing not found.');
+        // "I have nothing under that name" - the answer a model reads to
+        // decide whether this Dto speaks for its table at all
+        $this->assertNull($request->asColumns(tablename: 'missing'));
 
-        $request->asTable('missing');
+        // and $orAllColumns does not rescue it: this class does name a table,
+        // just not that one, so 'missing' is a mistake and not an omission.
+        // Answering with user's columns would write them into another table
+        $this->assertNull($request->asColumns(tablename: 'missing', orAllColumns: true));
+    }
+
+    public function testEachTableGetsOnlyThePropertiesTaggedForIt(): void
+    {
+        $request = new class(['name' => 'Don', 'note' => 'hi', 'scratch' => 'x']) extends Dto {
+            #[IsRequired]
+            #[Table('records')]
+            public string $name;
+
+            #[IsRequired]
+            #[Table('audit')]
+            public string $note;
+
+            // no #[Table] - belongs to no table in particular
+            #[IsRequired]
+            public string $scratch;
+        };
+
+        // one model's share each, and neither is handed the other's column
+        $this->assertSame(['name' => 'Don'], $request->asColumns(tablename: 'records'));
+        $this->assertSame(['note' => 'hi'], $request->asColumns(tablename: 'audit'));
+
+        // unscoped is still the whole record, untagged property included
+        $this->assertSame(['name' => 'Don', 'note' => 'hi', 'scratch' => 'x'], $request->asColumns());
+
+        // and no table was invented from the untagged property's name
+        $this->assertNull($request->asColumns(tablename: 'scratch'));
+    }
+
+    public function testAClassThatTagsNoTableAnswersNullOrEverything(): void
+    {
+        $request = new MinimalRequest(['token' => 'abc123']);
+
+        $this->assertTrue($request->isValid());
+
+        // it never named a table, so it has nothing under one ...
+        $this->assertNull($request->asColumns(tablename: 'tokens'));
+
+        // ... but a caller can say "an untagged Dto is all mine". This is the
+        // single-model case: the Dto had no reason to name the one table it
+        // was written for
+        $this->assertSame(['token' => 'abc123'], $request->asColumns(tablename: 'tokens', orAllColumns: true));
+
+        // the value was never lost either way - it simply belongs to no table
+        $this->assertSame(['token' => 'abc123'], $request->asColumns());
+    }
+
+    public function testABareTableAttributeCountsAsNoTable(): void
+    {
+        $request = new class(['name' => 'Don']) extends Dto {
+            // #[Table]'s name defaults to '' - a table name that says nothing,
+            // so it is treated the same as not tagging the property at all
+            #[IsRequired]
+            #[Table]
+            public string $name;
+        };
+
+        $this->assertNull($request->table('name'));
+        $this->assertNull($request->asColumns(tablename: ''));
+
+        // and with nothing tagged, the class counts as tagging no table at all
+        $this->assertSame(['name' => 'Don'], $request->asColumns(tablename: 'anything', orAllColumns: true));
+        $this->assertSame(['name' => 'Don'], $request->asColumns());
     }
 
     public function testInvalidRequestReportsErrorsByFieldName(): void
@@ -216,7 +270,9 @@ final class DtoTest extends unitTestHelper
 
         $this->assertSame([], $request->asArray());
         $this->assertSame([], $request->asColumns());
-        $this->assertSame([], $request->asTable());
+
+        // nothing valid landed, so the table has nothing in it either
+        $this->assertNull($request->asColumns(tablename: 'user'));
     }
 
     public function testASingleFieldCanFailWhileOthersSucceed(): void
@@ -242,7 +298,10 @@ final class DtoTest extends unitTestHelper
         $this->assertTrue($request->isValid());
         $this->assertSame(['token' => 'abc123'], $request->asArray());
         $this->assertSame(['token' => 'abc123'], $request->asColumns());
-        $this->assertSame(['token' => ['token' => 'abc123']], $request->asTable());
+
+        // ... except the table, which has no property-name fallback -
+        // see testAClassThatTagsNoTableAnswersNullOrEverything
+        $this->assertNull($request->asColumns(tablename: 'token'));
     }
 
     public function testPropertiesWithoutAttributesAreIgnored(): void
@@ -260,7 +319,7 @@ final class DtoTest extends unitTestHelper
         $this->assertTrue($request->isValid());
         $this->assertSame([], $request->asArray());
         $this->assertSame([], $request->asColumns());
-        $this->assertSame([], $request->asTable());
+        $this->assertNull($request->asColumns(tablename: 'anything'));
     }
 
     public function testInputReturnsWholeArrayOrSingleKey(): void
@@ -330,11 +389,16 @@ final class DtoTest extends unitTestHelper
 
         $this->assertSame('token', $request->fieldName('token'));
         $this->assertSame('token', $request->column('token'));
-        $this->assertSame('token', $request->table('token'));
         $this->assertSame('token', $request->label('token'));
+
+        // table() is the exception: no #[Table] means no table, not a table
+        // named after the property - naming one would name a table the
+        // property is not in, and asColumns() agrees by filing it under none.
+        $this->assertNull($request->table('token'));
 
         // An unknown property falls back to the given name too.
         $this->assertSame('unknown', $request->fieldName('unknown'));
+        $this->assertNull($request->table('unknown'));
     }
 
     public function testValidAndInvalidKeysDefaultToRawPropertyNames(): void
@@ -678,7 +742,7 @@ final class DtoTest extends unitTestHelper
         $this->assertSame($request->asColumns(), $request->asColumns(withoutPrimary: true));
     }
 
-    public function testAsTableWithoutPrimaryDropsItFromItsTableOnly(): void
+    public function testWithoutPrimaryDropsItFromItsOwnTableOnly(): void
     {
         $request = new class(['id' => '7', 'name' => 'Don', 'note' => 'hi']) extends Dto {
             #[IsPrimary]
@@ -695,20 +759,24 @@ final class DtoTest extends unitTestHelper
             public string $note;
         };
 
-        $this->assertSame(
-            ['records' => ['name' => 'Don'], 'audit' => ['note' => 'hi']],
-            $request->asTable(withoutPrimary: true)
-        );
-        $this->assertSame(['name' => 'Don'], $request->asTable('records', true));
+        // the primary is records', so records loses it ...
+        $this->assertSame(['name' => 'Don'], $request->asColumns(true, 'records'));
 
-        // and the unflagged shape is untouched
-        $this->assertSame(['id' => 7, 'name' => 'Don'], $request->asTable('records'));
+        // ... and audit, which never had it, is untouched
+        $this->assertSame(['note' => 'hi'], $request->asColumns(true, 'audit'));
+
+        // unscoped, the one primary column goes either way
+        $this->assertSame(['name' => 'Don', 'note' => 'hi'], $request->asColumns(true));
+
+        // and the unflagged shape keeps it
+        $this->assertSame(['id' => 7, 'name' => 'Don'], $request->asColumns(tablename: 'records'));
     }
 
     public function testDbCastAppliesToDbShapesOnly(): void
     {
         $request = new class(['flag' => true]) extends Dto {
             #[DbCast('int')]
+            #[Table('settings')]
             public bool $flag;
         };
 
@@ -719,7 +787,7 @@ final class DtoTest extends unitTestHelper
 
         // storage value in the db shapes
         $this->assertSame(['flag' => 1], $request->asColumns());
-        $this->assertSame(['flag' => ['flag' => 1]], $request->asTable());
+        $this->assertSame(['flag' => 1], $request->asColumns(tablename: 'settings'));
     }
 
     public function testDbCastNeverCastsNull(): void

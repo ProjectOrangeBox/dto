@@ -56,7 +56,7 @@ class Registration extends Dto
     #[Label('Password')]
     public protected(set) string $password;
 
-    // Every valid field is included in asArray()/asColumns()/asTable(). This
+    // Every valid field is included in asArray()/asColumns(). This
     // confirmation field has no #[Table]/#[Column], so it defaults to its own
     // property name in those outputs — filter it out downstream before saving.
     #[IsRequired]

@@ -47,7 +47,7 @@ function demo(string $class, string $label, array $input): void
         echo 'VALID' . PHP_EOL;
         echo 'asArray:   ' . json_encode($request->asArray()) . PHP_EOL;
         echo 'asColumns: ' . json_encode($request->asColumns()) . PHP_EOL;
-        echo 'asTable:   ' . json_encode($request->asTable()) . PHP_EOL;
+        echo 'asColumns(user): ' . json_encode($request->asColumns(tablename: 'user')) . PHP_EOL;
     } else {
         echo 'INVALID' . PHP_EOL;
 
@@ -149,7 +149,7 @@ demo(ContactPreference::class, 'invalid (email required, disallowed handle, prom
 
 // Order nests a dto-array: #[IsArray(OrderLine::class)] builds an OrderLine
 // per element. Note the valid report: asArray flattens the lines into nested
-// plain arrays, while asColumns/asTable skip them — nested structures have
+// plain arrays, while asColumns skips them — nested structures have
 // no single-row db shape.
 demo(Order::class, 'valid', [
     'customer' => '  Johnny Appleseed  ',
@@ -194,7 +194,7 @@ echo 'parent errors: ' . json_encode($order->errors()) . PHP_EOL;
 
 foreach ($order->lines as $index => $line) {
     if ($line->isValid()) {
-        echo 'line ' . $index . ' asTable: ' . json_encode($line->asTable()) . PHP_EOL;
+        echo 'line ' . $index . ' asColumns: ' . json_encode($line->asColumns()) . PHP_EOL;
     } else {
         echo 'line ' . $index . ' errors:  ' . json_encode($line->errors()) . PHP_EOL;
     }

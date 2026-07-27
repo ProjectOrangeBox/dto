@@ -25,7 +25,7 @@ use orange\dto\attributes\validations\MinCount;
  * more errors"); extract $order->lines and read each child's own errors()
  * for the detail. asArray()/json flatten the children into nested plain
  * arrays, while the db shapes skip the property entirely — persist each line
- * individually through its own asColumns()/asTable().
+ * individually through its own asColumns().
  */
 class Order extends Dto
 {

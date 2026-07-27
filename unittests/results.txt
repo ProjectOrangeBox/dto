@@ -3,9 +3,11 @@ Dto
  [x] Valid request assigns typed properties
  [x] As array is keyed by property name
  [x] As columns is keyed by column name
- [x] As table groups by table name
- [x] As table can return a single table
- [x] As table throws for unknown table
+ [x] As columns can be restricted to one table
+ [x] As columns returns null for a table the class does not name
+ [x] Each table gets only the properties tagged for it
+ [x] A class that tags no table answers null or everything
+ [x] A bare table attribute counts as no table
  [x] Invalid request reports errors by field name
  [x] Invalid fields are excluded from output
  [x] A single field can fail while others succeed
@@ -42,7 +44,7 @@ Dto
  [x] As columns without primary drops the primary column
  [x] As columns without primary uses the true column key
  [x] As columns without primary is a no op when none is tagged
- [x] As table without primary drops it from its table only
+ [x] Without primary drops it from its own table only
  [x] Db cast applies to db shapes only
  [x] Db cast never casts null
  [x] Db cast rejects an unknown target at compile time
