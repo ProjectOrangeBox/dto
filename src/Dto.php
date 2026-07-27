@@ -49,9 +49,11 @@ class Dto implements JsonSerializable
      *         'column' => string,      // db column (Column attribute or property name)
      *         'table' => ?string,      // db table (Table attribute) or null when untagged
      *         'label' => string,       // human name (Label attribute or property name)
+     *         'type' => ?string,       // declared property type, or null when untyped
+     *         'nullable' => bool,       // true when the declared property type allows null
      *         'dbCast' => ?string,     // db-shape cast target (DbCast attribute) or null
      *         'dtoArray' => ?string,   // child Dto class (IsArray with a class) or null
-     *         'rules' => [[rule class, constructor args, has validate(), has filter()], ...],
+     *         'rules' => [[rule class, short name, constructor args, has validate(), has filter()], ...],
      *     ]],
      * ]]
      */
@@ -311,6 +313,83 @@ class Dto implements JsonSerializable
     public function label(string $property): string
     {
         return self::$blueprints[static::class]['properties'][$property]['label'] ?? $property;
+    }
+
+    /**
+     * Returns the class schema compiled from the Dto's public attributes.
+     *
+     * This describes the class, not an input payload, so callers can ask the
+     * class directly without constructing a throwaway instance.
+     *
+     * @return array<string, mixed> The schema for the concrete Dto class
+     */
+    public static function schema(): array
+    {
+        $blueprint = self::$blueprints[static::class] ??= self::compile(static::class);
+        $columns = [];
+        $tables = [];
+        $properties = [];
+
+        foreach ($blueprint['properties'] as $property => $meta) {
+            $rules = [];
+
+            foreach ($meta['rules'] as [$ruleClass, $ruleName, $args, $validates, $filters]) {
+                $rules[] = [
+                    'name' => $ruleName,
+                    'class' => $ruleClass,
+                    'arguments' => $args,
+                    'validates' => $validates,
+                    'filters' => $filters,
+                ];
+            }
+
+            $columns[] = $meta['column'];
+
+            if ($meta['table'] !== null) {
+                $tables[$meta['table']][] = $meta['column'];
+            }
+
+            $properties[$property] = [
+                'fieldName' => $meta['fieldName'],
+                'column' => $meta['column'],
+                'table' => $meta['table'],
+                'label' => $meta['label'],
+                'type' => $meta['type'],
+                'nullable' => $meta['nullable'],
+                'primary' => in_array($property, $blueprint['primaries'], true),
+                'dbCast' => $meta['dbCast'],
+                'dtoArray' => $meta['dtoArray'],
+                'rules' => $rules,
+            ];
+        }
+
+        $primaries = self::schemaPrimaries($blueprint);
+
+        return [
+            'class' => static::class,
+            'columns' => $columns,
+            'tables' => $tables,
+            'primaries' => $primaries,
+            'primary' => count($primaries) == 1 ? $primaries[0] : '',
+            'properties' => $properties,
+        ];
+    }
+
+    /**
+     * Returns primary column names from a compiled blueprint.
+     *
+     * @param array $blueprint The compiled Dto class blueprint
+     * @return array<int, string> The primary column names, in declaration order
+     */
+    private static function schemaPrimaries(array $blueprint): array
+    {
+        $columns = [];
+
+        foreach ($blueprint['primaries'] as $property) {
+            $columns[] = $blueprint['properties'][$property]['column'];
+        }
+
+        return $columns;
     }
 
     /**
@@ -631,6 +710,9 @@ class Dto implements JsonSerializable
                 $blueprint['tables'][] = $table;
             }
             $label = isset($byLowerName['label']) ? $byLowerName['label']->newInstance()->getName() : $propertyName;
+            $type = $property->getType();
+            $typeName = $type === null ? null : (string)$type;
+            $nullable = $type?->allowsNull() ?? true;
             // instantiating DbCast validates its target — a typo throws here,
             // at the class's first construction, not silently at storage time
             $dbCast = isset($byLowerName['dbcast']) ? $byLowerName['dbcast']->newInstance()->getName() : null;
@@ -654,7 +736,7 @@ class Dto implements JsonSerializable
                 $filters = method_exists($ruleClass, 'filter');
 
                 if ($validates || $filters) {
-                    $rules[] = [$ruleClass, $attribute->getArguments(), $validates, $filters];
+                    $rules[] = [$ruleClass, (new ReflectionClass($ruleClass))->getShortName(), $attribute->getArguments(), $validates, $filters];
                 }
 
                 // a rule that maps elements into child DTOs (IsArray with a
@@ -671,6 +753,8 @@ class Dto implements JsonSerializable
                 'column' => $column,
                 'table' => $table,
                 'label' => $label,
+                'type' => $typeName,
+                'nullable' => $nullable,
                 'dbCast' => $dbCast,
                 'dtoArray' => $dtoArray,
                 'rules' => $rules,
@@ -717,7 +801,7 @@ class Dto implements JsonSerializable
         $isValid = true;
 
         // replay the rules in declaration order
-        foreach ($meta['rules'] as [$ruleClass, $args, $validates, $filters]) {
+        foreach ($meta['rules'] as [$ruleClass,, $args, $validates, $filters]) {
             $rule = new $ruleClass(...$args);
 
             // send a copy of this request into the rule so it can access other fields if needed
@@ -781,7 +865,7 @@ class Dto implements JsonSerializable
 
         // dto-array: nested plain arrays in the output, no db shapes
         if ($dtoArray !== null) {
-            $this->array[$property] = array_map(static fn (Dto $child): array => $child->asArray(), $value);
+            $this->array[$property] = array_map(static fn(Dto $child): array => $child->asArray(), $value);
 
             return;
         }

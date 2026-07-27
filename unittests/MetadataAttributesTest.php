@@ -54,10 +54,9 @@ final class MetadataAttributesTest extends unitTestHelper
 
     public function testTable(): void
     {
-        $attribute = new Table('user', 'default');
+        $attribute = new Table('user');
 
         $this->assertEquals('user', $attribute->getName());
-        $this->assertEquals('default', $attribute->getDatabase());
     }
 
     public function testTableDefaultsToEmptyStrings(): void
@@ -65,7 +64,6 @@ final class MetadataAttributesTest extends unitTestHelper
         $attribute = new Table();
 
         $this->assertEquals('', $attribute->getName());
-        $this->assertEquals('', $attribute->getDatabase());
     }
 
     public function testDbCastAcceptsEachScalarTarget(): void

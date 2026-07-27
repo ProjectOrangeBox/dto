@@ -14,9 +14,9 @@ use orange\dto\DtoAttribute;
 class Table extends DtoAttribute
 {
     /**
-     * Stores the configured table name and database identifier.
+     * Stores the configured table name identifier.
      */
-    public function __construct(protected string $name = '', private readonly string $database = '')
+    public function __construct(protected string $name = '')
     {
     }
 
@@ -26,13 +26,5 @@ class Table extends DtoAttribute
     public function getName(): string
     {
         return $this->name;
-    }
-
-    /**
-     * Returns the configured database identifier.
-     */
-    public function getDatabase(): string
-    {
-        return $this->database;
     }
 }
