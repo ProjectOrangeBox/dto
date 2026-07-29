@@ -893,7 +893,7 @@ class Dto implements JsonSerializable
                 $filters = method_exists($ruleClass, 'filter');
 
                 if ($validates || $filters) {
-                    $rules[] = [$ruleClass, (new ReflectionClass($ruleClass))->getShortName(), $attribute->getArguments(), $validates, $filters];
+                    $rules[] = [$ruleClass, new ReflectionClass($ruleClass)->getShortName(), $attribute->getArguments(), $validates, $filters];
                 }
 
                 // a rule that maps elements into child DTOs (IsArray with a

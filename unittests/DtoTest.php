@@ -319,7 +319,7 @@ final class DtoTest extends unitTestHelper
 
         $this->assertContains('Name is required', $errors['name']);
         $this->assertContains('Age must be greater than 18', $errors['age']);
-        $this->assertContains('Favorite Color must be greater than 4 characters', $errors['clr']);
+        $this->assertContains('Favorite Color must be at least 4 characters', $errors['clr']);
     }
 
     public function testInvalidFieldsAreExcludedFromOutput(): void

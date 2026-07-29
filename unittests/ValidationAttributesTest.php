@@ -311,8 +311,8 @@ final class ValidationAttributesTest extends unitTestHelper
         $this->assertTrue($rule->validate('Apple'));
         $this->assertFalse($rule->validate('Oranges'));
         $this->assertEquals(6, $rule->getLength());
-        $this->assertEquals('This field must be less than 6 characters', $rule->getMessage());
-        $this->assertEquals('Name must be less than 6 characters', $rule->getMessage('Name'));
+        $this->assertEquals('This field must be at most 6 characters', $rule->getMessage());
+        $this->assertEquals('Name must be at most 6 characters', $rule->getMessage('Name'));
     }
 
     public function testMinLength(): void
@@ -320,10 +320,72 @@ final class ValidationAttributesTest extends unitTestHelper
         $rule = new MinLength(3);
 
         $this->assertTrue($rule->validate('Pear'));
-        $this->assertFalse($rule->validate('Fig'));
+        $this->assertFalse($rule->validate('Fi'));
         $this->assertEquals(3, $rule->getLength());
-        $this->assertEquals('This field must be greater than 3 characters', $rule->getMessage());
-        $this->assertEquals('Name must be greater than 3 characters', $rule->getMessage('Name'));
+        $this->assertEquals('This field must be at least 3 characters', $rule->getMessage());
+        $this->assertEquals('Name must be at least 3 characters', $rule->getMessage('Name'));
+    }
+
+    /**
+     * The bound itself, which is the case that actually says what these mean -
+     * and the one nothing pinned while they were exclusive. MinLength(4) once
+     * rejected a 4 character string and MaxLength(6) rejected a 6 character
+     * one, so every bound written in the codebase was silently one short at
+     * both ends.
+     */
+    public function testLengthBoundsAreInclusive(): void
+    {
+        $min = new MinLength(4);
+
+        $this->assertTrue($min->validate('abcd'), 'MinLength(4) must accept exactly 4');
+        $this->assertTrue($min->validate('abcde'));
+        $this->assertFalse($min->validate('abc'));
+
+        $max = new MaxLength(6);
+
+        $this->assertTrue($max->validate('abcdef'), 'MaxLength(6) must accept exactly 6');
+        $this->assertTrue($max->validate('abcde'));
+        $this->assertFalse($max->validate('abcdefg'));
+    }
+
+    /**
+     * A pair of them has to agree with the single rule that already spanned
+     * both - it was BetweenLength that made the old behaviour visible as an
+     * inconsistency rather than just a choice.
+     */
+    public function testLengthBoundsAgreeWithBetweenLength(): void
+    {
+        $min = new MinLength(2);
+        $max = new MaxLength(5);
+        $between = new BetweenLength(2, 5);
+
+        foreach (['a', 'ab', 'abc', 'abcde', 'abcdef'] as $candidate) {
+            $this->assertSame(
+                $between->validate($candidate),
+                $min->validate($candidate) && $max->validate($candidate),
+                'MinLength + MaxLength disagreed with BetweenLength on "' . $candidate . '"'
+            );
+        }
+    }
+
+    /**
+     * Length is counted in bytes, not characters - a four character UTF-8 word
+     * can be eight bytes. That is deliberate (a bound usually exists to fit a
+     * column or an algorithm limit) but it is not obvious, so it is pinned.
+     */
+    public function testLengthIsCountedInBytes(): void
+    {
+        // 'é' is two bytes in UTF-8: three characters, five bytes
+        $word = 'ééa';
+
+        $this->assertSame(3, mb_strlen($word));
+        $this->assertSame(5, strlen($word));
+
+        // the bounds follow the byte count, not the character count
+        $this->assertTrue(new MinLength(5)->validate($word));
+        $this->assertFalse(new MinLength(6)->validate($word));
+        $this->assertTrue(new MaxLength(5)->validate($word));
+        $this->assertFalse(new MaxLength(4)->validate($word));
     }
 
     public function testNumeric(): void
