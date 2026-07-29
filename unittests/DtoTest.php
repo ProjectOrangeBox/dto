@@ -128,6 +128,40 @@ final class DtoTest extends unitTestHelper
         $this->assertSame('Orange', $request->color);
     }
 
+    public function testFromDatabaseReadsColumnsIntoMatchingProperties(): void
+    {
+        $request = new ProfileRequest([
+            'name' => 'Johnny Appleseed',
+            'age' => '23',
+            'fav_color' => 'Orange',
+        ], fromDatabase: true);
+
+        $this->assertTrue($request->isValid());
+        $this->assertSame('Orange', $request->color);
+        $this->assertSame([
+            'name' => 'Johnny Appleseed',
+            'age' => 23,
+            'color' => 'Orange',
+        ], $request->asArray());
+        $this->assertSame([
+            'name' => 'Johnny Appleseed',
+            'age' => 23,
+            'fav_color' => 'Orange',
+        ], $request->asColumns(tablename: 'user'));
+    }
+
+    public function testFromDatabaseStillReportsErrorsByFieldName(): void
+    {
+        $request = new ProfileRequest([
+            'name' => 'Johnny Appleseed',
+            'age' => '23',
+            'fav_color' => '',
+        ], fromDatabase: true);
+
+        $this->assertFalse($request->isValid());
+        $this->assertArrayHasKey('clr', $request->errors());
+    }
+
     public function testAsArrayIsKeyedByPropertyName(): void
     {
         $request = new ProfileRequest($this->validProfileInput());

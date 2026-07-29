@@ -1,6 +1,8 @@
 Dto
  [x] Valid request is valid
  [x] Valid request assigns typed properties
+ [x] From database reads columns into matching properties
+ [x] From database still reports errors by field name
  [x] As array is keyed by property name
  [x] As columns is keyed by column name
  [x] As columns can be restricted to one table

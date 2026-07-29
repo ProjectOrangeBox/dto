@@ -71,10 +71,15 @@ class Dto implements JsonSerializable
      * every construction then processes each property through its rules.
      *
      * @param array $input The input data to be validated and processed
+     * @param bool $fromDatabase When true, read input values from compiled database column names
      */
-    public function __construct(protected array $input)
+    public function __construct(protected array $input, bool $fromDatabase = false)
     {
         $blueprint = self::$blueprints[static::class] ??= self::compile(static::class);
+
+        if ($fromDatabase) {
+            $this->input = $this->inputFromDatabase($this->input, $blueprint);
+        }
 
         foreach ($blueprint['properties'] as $property => $meta) {
             $this->process($property, $meta);
@@ -376,23 +381,6 @@ class Dto implements JsonSerializable
     }
 
     /**
-     * Returns primary column names from a compiled blueprint.
-     *
-     * @param array $blueprint The compiled Dto class blueprint
-     * @return array<int, string> The primary column names, in declaration order
-     */
-    private static function schemaPrimaries(array $blueprint): array
-    {
-        $columns = [];
-
-        foreach ($blueprint['primaries'] as $property) {
-            $columns[] = $blueprint['properties'][$property]['column'];
-        }
-
-        return $columns;
-    }
-
-    /**
      * Returns the tables this class names, in declaration order.
      *
      * Null when no property carries a #[Table] - which is also the answer to
@@ -473,48 +461,6 @@ class Dto implements JsonSerializable
         }
 
         return $columns;
-    }
-
-    /**
-     * Returns the #[IsPrimary] properties' compiled blueprint entries, keyed by
-     * property name and in declaration order.
-     *
-     * The authoritative source for a primary's true table and column keys in
-     * the db shapes.
-     *
-     * @param ?string $tablename Restrict to the primaries of this table
-     * @return array<string, array> The blueprint entries, empty when none is tagged
-     */
-    private function primaryMetas(?string $tablename = null): array
-    {
-        $blueprint = self::$blueprints[static::class];
-        $metas = [];
-
-        foreach ($blueprint['primaries'] as $property) {
-            $meta = $blueprint['properties'][$property];
-
-            // a class that names no table at all has only the one table it was
-            // written for, so its primaries answer to any name the caller asks by
-            if ($tablename === null || $blueprint['tables'] === [] || $meta['table'] === $tablename) {
-                $metas[$property] = $meta;
-            }
-        }
-
-        return $metas;
-    }
-
-    /**
-     * Guards the singular primary()/primaryValue() against a compound key.
-     *
-     * @throws LogicException When the scope holds more than one primary
-     */
-    private function assertOnePrimary(string $method, string $plural, ?string $tablename): void
-    {
-        $columns = $this->primaries($tablename);
-
-        if (count($columns) > 1) {
-            throw new LogicException(static::class . ' has ' . count($columns) . ' primary columns (' . implode(', ', $columns) . ')' . ($tablename === null ? '' : ' in table "' . $tablename . '"') . '; ' . $method . '() has no single answer - use ' . $plural . '() or name a table.');
-        }
     }
 
     /**
@@ -656,112 +602,27 @@ class Dto implements JsonSerializable
     }
 
     /**
-     * Compiles a Dto class's blueprint: reflects every public property once,
-     * resolves its metadata attributes (FieldName, Column, Table, Label,
-     * IsPrimary) to plain strings and reduces its rule attributes to
-     * [class, args] pairs that construction can replay without reflection.
+     * Re-keys database rows so the normal field-name pipeline can process them.
      *
-     * @param string $class The concrete Dto class to compile
-     * @return array The compiled blueprint (see $blueprints)
+     * Database rows arrive keyed by #[Column] names, while request payloads are
+     * keyed by #[FieldName] names. Copying column values onto their field names
+     * lets filters, validations, errors, asArray(), and jsonSerialize() keep the
+     * same behavior after lookup. When both keys are present, the column value
+     * wins because fromDatabase explicitly asks to trust the row shape.
+     *
+     * @param array $input Raw database row data
+     * @param array $blueprint Compiled DTO metadata
+     * @return array Input with column values also available by field name
      */
-    private static function compile(string $class): array
+    protected function inputFromDatabase(array $input, array $blueprint): array
     {
-        $blueprint = ['primaries' => [], 'tables' => [], 'properties' => []];
-
-        foreach (new ReflectionClass($class)->getProperties(ReflectionProperty::IS_PUBLIC) as $property) {
-            // collect the DtoAttribute attributes keyed by short name — a
-            // repeated short name overwrites the earlier one (last wins)
-            $attributes = [];
-
-            foreach ($property->getAttributes() as $attribute) {
-                $attributeReflection = new ReflectionClass($attribute->getName());
-
-                if ($attributeReflection->isSubclassOf(DtoAttribute::class)) {
-                    $attributes[$attributeReflection->getShortName()] = $attribute;
-                }
+        foreach ($blueprint['properties'] as $meta) {
+            if (array_key_exists($meta['column'], $input)) {
+                $input[$meta['fieldName']] = $input[$meta['column']];
             }
-
-            // a property with no attributes is ignored entirely by the engine
-            if (empty($attributes)) {
-                continue;
-            }
-
-            $propertyName = $property->getName();
-
-            // index by lowercased short name for case-insensitive metadata
-            // lookups (first match wins, like the old findBy())
-            $byLowerName = [];
-
-            foreach ($attributes as $name => $attribute) {
-                $byLowerName[strtolower($name)] ??= $attribute;
-            }
-
-            // resolve the metadata to plain strings, defaulting to the property name
-            $fieldName = isset($byLowerName['fieldname']) ? $byLowerName['fieldname']->newInstance()->getName() : $propertyName;
-            $column = isset($byLowerName['column']) ? $byLowerName['column']->newInstance()->getName() : $propertyName;
-            // no #[Table] means the property belongs to no table in particular, so
-            // asColumns() never files it under one. An empty name (a bare #[Table])
-            // says as little as no attribute at all
-            $table = isset($byLowerName['table']) ? ($byLowerName['table']->newInstance()->getName() ?: null) : null;
-
-            // the tables this class names decide whether asColumns() requires
-            // a $tablename, and which ones it will answer to
-            if ($table !== null && !in_array($table, $blueprint['tables'], true)) {
-                $blueprint['tables'][] = $table;
-            }
-            $label = isset($byLowerName['label']) ? $byLowerName['label']->newInstance()->getName() : $propertyName;
-            $type = $property->getType();
-            $typeName = $type === null ? null : (string)$type;
-            $nullable = $type?->allowsNull() ?? true;
-            // instantiating DbCast validates its target — a typo throws here,
-            // at the class's first construction, not silently at storage time
-            $dbCast = isset($byLowerName['dbcast']) ? $byLowerName['dbcast']->newInstance()->getName() : null;
-
-            // every property tagged #[IsPrimary] counts: several in one table
-            // make a compound key, one per table gives a multi-table Dto a key
-            // for each. The column name is read back off the blueprint entry, so
-            // primaries() names exactly what asColumns() keys by
-            if (isset($byLowerName['isprimary'])) {
-                $blueprint['primaries'][] = $propertyName;
-            }
-
-            // keep only the attributes that actually validate or filter;
-            // pure metadata attributes never need instantiating again
-            $rules = [];
-            $dtoArray = null;
-
-            foreach ($attributes as $attribute) {
-                $ruleClass = $attribute->getName();
-                $validates = method_exists($ruleClass, 'validate');
-                $filters = method_exists($ruleClass, 'filter');
-
-                if ($validates || $filters) {
-                    $rules[] = [$ruleClass, (new ReflectionClass($ruleClass))->getShortName(), $attribute->getArguments(), $validates, $filters];
-                }
-
-                // a rule that maps elements into child DTOs (IsArray with a
-                // class) flags this as a dto-array property — nested output,
-                // no db shapes. Instantiating also verifies the class here,
-                // at first construction, not silently at input time
-                if (method_exists($ruleClass, 'getDtoClass')) {
-                    $dtoArray = $attribute->newInstance()->getDtoClass();
-                }
-            }
-
-            $blueprint['properties'][$propertyName] = [
-                'fieldName' => $fieldName,
-                'column' => $column,
-                'table' => $table,
-                'label' => $label,
-                'type' => $typeName,
-                'nullable' => $nullable,
-                'dbCast' => $dbCast,
-                'dtoArray' => $dtoArray,
-                'rules' => $rules,
-            ];
         }
 
-        return $blueprint;
+        return $input;
     }
 
     /**
@@ -890,5 +751,173 @@ class Dto implements JsonSerializable
         }
 
         $this->db['columns'][$column] = $dbValue;
+    }
+
+    /**
+     * Returns primary column names from a compiled blueprint.
+     *
+     * @param array $blueprint The compiled Dto class blueprint
+     * @return array<int, string> The primary column names, in declaration order
+     */
+    private static function schemaPrimaries(array $blueprint): array
+    {
+        $columns = [];
+
+        foreach ($blueprint['primaries'] as $property) {
+            $columns[] = $blueprint['properties'][$property]['column'];
+        }
+
+        return $columns;
+    }
+
+    /**
+     * Returns the #[IsPrimary] properties' compiled blueprint entries, keyed by
+     * property name and in declaration order.
+     *
+     * The authoritative source for a primary's true table and column keys in
+     * the db shapes.
+     *
+     * @param ?string $tablename Restrict to the primaries of this table
+     * @return array<string, array> The blueprint entries, empty when none is tagged
+     */
+    private function primaryMetas(?string $tablename = null): array
+    {
+        $blueprint = self::$blueprints[static::class];
+        $metas = [];
+
+        foreach ($blueprint['primaries'] as $property) {
+            $meta = $blueprint['properties'][$property];
+
+            // a class that names no table at all has only the one table it was
+            // written for, so its primaries answer to any name the caller asks by
+            if ($tablename === null || $blueprint['tables'] === [] || $meta['table'] === $tablename) {
+                $metas[$property] = $meta;
+            }
+        }
+
+        return $metas;
+    }
+
+    /**
+     * Guards the singular primary()/primaryValue() against a compound key.
+     *
+     * @throws LogicException When the scope holds more than one primary
+     */
+    private function assertOnePrimary(string $method, string $plural, ?string $tablename): void
+    {
+        $columns = $this->primaries($tablename);
+
+        if (count($columns) > 1) {
+            throw new LogicException(static::class . ' has ' . count($columns) . ' primary columns (' . implode(', ', $columns) . ')' . ($tablename === null ? '' : ' in table "' . $tablename . '"') . '; ' . $method . '() has no single answer - use ' . $plural . '() or name a table.');
+        }
+    }
+
+    /**
+     * Compiles a Dto class's blueprint: reflects every public property once,
+     * resolves its metadata attributes (FieldName, Column, Table, Label,
+     * IsPrimary) to plain strings and reduces its rule attributes to
+     * [class, args] pairs that construction can replay without reflection.
+     *
+     * @param string $class The concrete Dto class to compile
+     * @return array The compiled blueprint (see $blueprints)
+     */
+    private static function compile(string $class): array
+    {
+        $blueprint = ['primaries' => [], 'tables' => [], 'properties' => []];
+
+        foreach (new ReflectionClass($class)->getProperties(ReflectionProperty::IS_PUBLIC) as $property) {
+            // collect the DtoAttribute attributes keyed by short name — a
+            // repeated short name overwrites the earlier one (last wins)
+            $attributes = [];
+
+            foreach ($property->getAttributes() as $attribute) {
+                $attributeReflection = new ReflectionClass($attribute->getName());
+
+                if ($attributeReflection->isSubclassOf(DtoAttribute::class)) {
+                    $attributes[$attributeReflection->getShortName()] = $attribute;
+                }
+            }
+
+            // a property with no attributes is ignored entirely by the engine
+            if (empty($attributes)) {
+                continue;
+            }
+
+            $propertyName = $property->getName();
+
+            // index by lowercased short name for case-insensitive metadata
+            // lookups (first match wins, like the old findBy())
+            $byLowerName = [];
+
+            foreach ($attributes as $name => $attribute) {
+                $byLowerName[strtolower($name)] ??= $attribute;
+            }
+
+            // resolve the metadata to plain strings, defaulting to the property name
+            $fieldName = isset($byLowerName['fieldname']) ? $byLowerName['fieldname']->newInstance()->getName() : $propertyName;
+            $column = isset($byLowerName['column']) ? $byLowerName['column']->newInstance()->getName() : $propertyName;
+            // no #[Table] means the property belongs to no table in particular, so
+            // asColumns() never files it under one. An empty name (a bare #[Table])
+            // says as little as no attribute at all
+            $table = isset($byLowerName['table']) ? ($byLowerName['table']->newInstance()->getName() ?: null) : null;
+
+            // the tables this class names decide whether asColumns() requires
+            // a $tablename, and which ones it will answer to
+            if ($table !== null && !in_array($table, $blueprint['tables'], true)) {
+                $blueprint['tables'][] = $table;
+            }
+            $label = isset($byLowerName['label']) ? $byLowerName['label']->newInstance()->getName() : $propertyName;
+            $type = $property->getType();
+            $typeName = $type === null ? null : (string)$type;
+            $nullable = $type?->allowsNull() ?? true;
+            // instantiating DbCast validates its target — a typo throws here,
+            // at the class's first construction, not silently at storage time
+            $dbCast = isset($byLowerName['dbcast']) ? $byLowerName['dbcast']->newInstance()->getName() : null;
+
+            // every property tagged #[IsPrimary] counts: several in one table
+            // make a compound key, one per table gives a multi-table Dto a key
+            // for each. The column name is read back off the blueprint entry, so
+            // primaries() names exactly what asColumns() keys by
+            if (isset($byLowerName['isprimary'])) {
+                $blueprint['primaries'][] = $propertyName;
+            }
+
+            // keep only the attributes that actually validate or filter;
+            // pure metadata attributes never need instantiating again
+            $rules = [];
+            $dtoArray = null;
+
+            foreach ($attributes as $attribute) {
+                $ruleClass = $attribute->getName();
+                $validates = method_exists($ruleClass, 'validate');
+                $filters = method_exists($ruleClass, 'filter');
+
+                if ($validates || $filters) {
+                    $rules[] = [$ruleClass, (new ReflectionClass($ruleClass))->getShortName(), $attribute->getArguments(), $validates, $filters];
+                }
+
+                // a rule that maps elements into child DTOs (IsArray with a
+                // class) flags this as a dto-array property — nested output,
+                // no db shapes. Instantiating also verifies the class here,
+                // at first construction, not silently at input time
+                if (method_exists($ruleClass, 'getDtoClass')) {
+                    $dtoArray = $attribute->newInstance()->getDtoClass();
+                }
+            }
+
+            $blueprint['properties'][$propertyName] = [
+                'fieldName' => $fieldName,
+                'column' => $column,
+                'table' => $table,
+                'label' => $label,
+                'type' => $typeName,
+                'nullable' => $nullable,
+                'dbCast' => $dbCast,
+                'dtoArray' => $dtoArray,
+                'rules' => $rules,
+            ];
+        }
+
+        return $blueprint;
     }
 }
