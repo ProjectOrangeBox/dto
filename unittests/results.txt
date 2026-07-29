@@ -153,6 +153,9 @@ Validation Attributes
  [x] Matches
  [x] Max length
  [x] Min length
+ [x] Length bounds are inclusive
+ [x] Length bounds agree with between length
+ [x] Length is counted in bytes
  [x] Numeric
  [x] Regex match
  [x] Valid base 64
