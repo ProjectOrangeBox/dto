@@ -57,6 +57,8 @@ class MaxLength extends DtoAttribute
 
     /**
      * Supplies the maximum length for the formatted error message.
+     *
+     * @return list<scalar>
      */
     #[\Override]
     protected function getMessageValues(): array

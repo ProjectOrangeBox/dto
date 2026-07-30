@@ -41,6 +41,8 @@ class Matches extends DtoAttribute
 
     /**
      * Supplies the field name for the formatted error message.
+     *
+     * @return list<scalar>
      */
     #[\Override]
     protected function getMessageValues(): array

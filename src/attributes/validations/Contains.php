@@ -47,6 +47,8 @@ class Contains extends DtoAttribute
 
     /**
      * Supplies the substring for the formatted error message.
+     *
+     * @return list<scalar>
      */
     #[\Override]
     protected function getMessageValues(): array

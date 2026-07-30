@@ -60,6 +60,8 @@ class MinLength extends DtoAttribute
 
     /**
      * Supplies the minimum length for the formatted error message.
+     *
+     * @return list<scalar>
      */
     #[\Override]
     protected function getMessageValues(): array

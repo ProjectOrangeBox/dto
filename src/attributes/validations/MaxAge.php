@@ -46,6 +46,8 @@ class MaxAge extends DtoAttribute
 
     /**
      * Supplies the years for the error message.
+     *
+     * @return list<scalar>
      */
     #[\Override]
     protected function getMessageValues(): array

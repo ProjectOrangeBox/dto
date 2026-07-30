@@ -47,6 +47,8 @@ class NotContains extends DtoAttribute
 
     /**
      * Supplies the substring for the error message.
+     *
+     * @return list<scalar>
      */
     #[\Override]
     protected function getMessageValues(): array

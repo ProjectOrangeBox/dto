@@ -57,6 +57,8 @@ class DtoAttribute
 
     /**
      * Supplies additional values used when formatting error messages.
+     *
+     * @return list<scalar>
      */
     protected function getMessageValues(): array
     {

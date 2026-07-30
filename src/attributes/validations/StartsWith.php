@@ -47,6 +47,8 @@ class StartsWith extends DtoAttribute
 
     /**
      * Supplies the prefix for the formatted error message.
+     *
+     * @return list<scalar>
      */
     #[\Override]
     protected function getMessageValues(): array

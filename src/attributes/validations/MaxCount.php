@@ -41,6 +41,8 @@ class MaxCount extends DtoAttribute
 
     /**
      * Supplies the count for the error message.
+     *
+     * @return list<scalar>
      */
     #[\Override]
     protected function getMessageValues(): array

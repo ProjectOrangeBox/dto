@@ -17,6 +17,8 @@ class NotInList extends DtoAttribute
 
     /**
      * Stores the disallowed values and optional custom message.
+     *
+     * @param array<array-key, scalar> $values
      */
     public function __construct(private readonly array $values, string $message = '')
     {
@@ -39,6 +41,8 @@ class NotInList extends DtoAttribute
 
     /**
      * Returns the configured disallowed values.
+     *
+     * @return array<array-key, scalar>
      */
     public function getValues(): array
     {

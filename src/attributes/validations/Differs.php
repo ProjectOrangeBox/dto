@@ -41,6 +41,8 @@ class Differs extends DtoAttribute
 
     /**
      * Supplies the field name used in the formatted error message.
+     *
+     * @return list<scalar>
      */
     #[\Override]
     protected function getMessageValues(): array

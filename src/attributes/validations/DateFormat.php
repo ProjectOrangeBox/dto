@@ -51,6 +51,8 @@ class DateFormat extends DtoAttribute
 
     /**
      * Supplies the format for the formatted error message.
+     *
+     * @return list<scalar>
      */
     #[\Override]
     protected function getMessageValues(): array

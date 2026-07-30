@@ -24,7 +24,8 @@ class ValidCreditCard extends DtoAttribute
 
         if (is_string($input) || is_int($input)) {
             // Strip common separators before validating the digits.
-            $number = preg_replace('/\D/', '', (string)$input);
+            // preg_replace() returns null if the pattern fails to compile
+            $number = preg_replace('/\D/', '', (string)$input) ?? '';
             $length = strlen((string) $number);
 
             if ($number !== '' && $length >= 13 && $length <= 19) {

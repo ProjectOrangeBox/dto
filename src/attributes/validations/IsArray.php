@@ -28,6 +28,8 @@ class IsArray extends DtoAttribute
     /**
      * The child DTOs built by validate(), or null when no class is configured
      * or the input never was an array.
+     *
+     * @var array<array-key, Dto>|null
      */
     private ?array $children = null;
 
@@ -87,6 +89,12 @@ class IsArray extends DtoAttribute
             }
 
             $child = new $this->dtoClass($element);
+
+            // dtoClass is validated when this attribute is constructed, but the
+            // name arrives as a string so the instance carries no type
+            if (!$child instanceof Dto) {
+                throw new InvalidArgumentException($this->dtoClass . ' is not a ' . Dto::class);
+            }
 
             $invalid = $invalid || !$child->isValid();
 

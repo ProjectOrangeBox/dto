@@ -17,7 +17,9 @@ class InList extends DtoAttribute
 
   /**
    * Stores the allowed values and optional custom message.
-   */
+   *
+     * @param array<array-key, scalar> $values
+     */
     public function __construct(private readonly array $values, string $message = '')
     {
         parent::__construct($message);
@@ -39,7 +41,9 @@ class InList extends DtoAttribute
 
   /**
    * Returns the configured allowed values.
-   */
+   *
+     * @return array<array-key, scalar>
+     */
     public function getValues(): array
     {
         return $this->values;

@@ -47,6 +47,8 @@ class ExactLength extends DtoAttribute
 
     /**
      * Supplies the configured length for the formatted error message.
+     *
+     * @return list<scalar>
      */
     #[\Override]
     protected function getMessageValues(): array

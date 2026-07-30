@@ -7,6 +7,7 @@ namespace orange\dto;
 use JsonSerializable;
 use LogicException;
 use orange\dto\DtoAttribute;
+use ReflectionAttribute;
 use ReflectionClass;
 use ReflectionProperty;
 
@@ -56,12 +57,18 @@ class Dto implements JsonSerializable
      *         'rules' => [[rule class, short name, constructor args, has validate(), has filter()], ...],
      *     ]],
      * ]]
+     *
+     * @var array<class-string, array<string, mixed>> compiled per Dto subclass
      */
     private static array $blueprints = [];
 
+    /** @var array<string, list<string>> field name => its error messages */
     protected array $errors = [];
+    /** @var array{tables: array<string, mixed>, columns: array<string, mixed>} */
     protected array $db = ['tables' => [], 'columns' => []];
+    /** @var array<string, mixed> */
     protected array $array = [];
+    /** @var array<string, string> property name => its input field name */
     protected array $keys = [];
 
     /**
@@ -70,7 +77,7 @@ class Dto implements JsonSerializable
      * The first construction of each concrete class compiles its blueprint;
      * every construction then processes each property through its rules.
      *
-     * @param array $input The input data to be validated and processed
+     * @param array<string, mixed> $input The input data to be validated and processed
      * @param bool $fromDatabase When true, read input values from compiled database column names
      */
     public function __construct(protected array $input, bool $fromDatabase = false)
@@ -99,7 +106,7 @@ class Dto implements JsonSerializable
     /**
      * Returns all validation errors grouped by field name.
      *
-     * @return array An associative array of field names to arrays of error messages
+     * @return array<string, list<string>> An associative array of field names to arrays of error messages
      */
     public function errors(): array
     {
@@ -125,7 +132,7 @@ class Dto implements JsonSerializable
      * A dot-flat shape rather than a nested one so the result JSON-encodes
      * as a plain object of message lists — no mixed list/map arrays.
      *
-     * @return array An associative array of dot-keyed field names to arrays of error messages
+     * @return array<string, list<string>> An associative array of dot-keyed field names to arrays of error messages
      */
     public function allErrors(): array
     {
@@ -156,7 +163,7 @@ class Dto implements JsonSerializable
      * to the property name when no FieldName attribute is present).
      *
      * @param bool $raw When true (default) returns raw property names; when false returns the resolved input field names
-     * @return array A list of valid keys
+     * @return list<string> A list of valid keys
      */
     public function validKeys(bool $raw = true): array
     {
@@ -176,7 +183,7 @@ class Dto implements JsonSerializable
      *
      * Convenience wrapper for validKeys(false).
      *
-     * @return array A list of valid input field names
+     * @return list<string> A list of valid input field names
      */
     public function validInputKeys(): array
     {
@@ -191,7 +198,7 @@ class Dto implements JsonSerializable
      * to the property name when no FieldName attribute is present).
      *
      * @param bool $raw When true (default) returns raw property names; when false returns the resolved input field names
-     * @return array A list of invalid keys
+     * @return list<string> A list of invalid keys
      */
     public function invalidKeys(bool $raw = true): array
     {
@@ -211,7 +218,7 @@ class Dto implements JsonSerializable
      *
      * Convenience wrapper for invalidKeys(false).
      *
-     * @return array A list of invalid input field names
+     * @return list<string> A list of invalid input field names
      */
     public function invalidInputKeys(): array
     {
@@ -428,7 +435,7 @@ class Dto implements JsonSerializable
      *
      * @param bool $withoutPrimary When true the #[IsPrimary] properties' columns are removed
      * @param ?string $tablename The table asking - required when the class names any
-     * @return array Column names to validated values, empty when nothing valid landed under $tablename
+     * @return array<string, mixed> Column names to validated values, empty when nothing valid landed under $tablename
      * @throws LogicException When the class names tables and $tablename is missing or not one of them
      */
     public function asColumns(bool $withoutPrimary = false, ?string $tablename = null): array
@@ -466,7 +473,7 @@ class Dto implements JsonSerializable
     /**
      * Returns validated data as a simple associative array.
      *
-     * @return array An associative array of property names to their validated values
+     * @return array<string, mixed> An associative array of property names to their validated values
      */
     public function asArray(): array
     {
@@ -480,7 +487,7 @@ class Dto implements JsonSerializable
      * result — like asArray(), invalid fields never appear.
      *
      * @param string ...$properties The property names to keep
-     * @return array The validated values for those properties, keyed by property name
+     * @return array<string, mixed> The validated values for those properties, keyed by property name
      */
     public function only(string ...$properties): array
     {
@@ -494,7 +501,7 @@ class Dto implements JsonSerializable
      * but never persist, such as a password confirmation.
      *
      * @param string ...$properties The property names to drop
-     * @return array The remaining validated values, keyed by property name
+     * @return array<string, mixed> The remaining validated values, keyed by property name
      */
     public function except(string ...$properties): array
     {
@@ -560,7 +567,7 @@ class Dto implements JsonSerializable
      * contract for API output: invalid fields are omitted and engine
      * internals can never leak into the encoding.
      *
-     * @return array The validated values, keyed by property name
+     * @return array<string, mixed> The validated values, keyed by property name
      */
     public function jsonSerialize(): array
     {
@@ -574,7 +581,7 @@ class Dto implements JsonSerializable
      * internal table/column bookkeeping — what matters when inspecting a Dto
      * is whether it validated, what survived, and what failed.
      *
-     * @return array The validity flag, validated values, and errors
+     * @return array<string, mixed> The validity flag, validated values, and errors
      */
     public function __debugInfo(): array
     {
@@ -610,9 +617,9 @@ class Dto implements JsonSerializable
      * same behavior after lookup. When both keys are present, the column value
      * wins because fromDatabase explicitly asks to trust the row shape.
      *
-     * @param array $input Raw database row data
-     * @param array $blueprint Compiled DTO metadata
-     * @return array Input with column values also available by field name
+     * @param array<string, mixed> $input Raw database row data
+     * @param array<string, mixed> $blueprint Compiled DTO metadata
+     * @return array<string, mixed> Input with column values also available by field name
      */
     protected function inputFromDatabase(array $input, array $blueprint): array
     {
@@ -634,7 +641,7 @@ class Dto implements JsonSerializable
      * database and array structures.
      *
      * @param string $property The property name to process
-     * @param array $meta The property's blueprint entry
+     * @param array<string, mixed> $meta The property's blueprint entry
      * @return void
      */
     protected function process(string $property, array $meta): void
@@ -665,18 +672,26 @@ class Dto implements JsonSerializable
         foreach ($meta['rules'] as [$ruleClass,, $args, $validates, $filters]) {
             $rule = new $ruleClass(...$args);
 
+            // every attribute collected into 'rules' extends DtoAttribute; the
+            // class name arrives as a plain string so nothing carries that
+            if (!$rule instanceof DtoAttribute) {
+                throw new LogicException($ruleClass . ' is not a ' . DtoAttribute::class);
+            }
+
             // send a copy of this request into the rule so it can access other fields if needed
             $rule->request($this);
 
             // do validation
-            if ($validates && ($provided || $rule->validatesAbsent())) {
+            // $validates was computed with method_exists() when the blueprint
+            // was built; repeat it here so the call is on a narrowed instance
+            if ($validates && ($provided || $rule->validatesAbsent()) && method_exists($rule, 'validate')) {
                 if (!$rule->validate($value)) {
                     $this->errors[$fieldName][] = $rule->getMessage($label);
                     $isValid = false;
                 }
             }
             // do filter
-            if ($filters) {
+            if ($filters && method_exists($rule, 'filter')) {
                 $value = $rule->filter($value);
             }
         }
@@ -756,8 +771,8 @@ class Dto implements JsonSerializable
     /**
      * Returns primary column names from a compiled blueprint.
      *
-     * @param array $blueprint The compiled Dto class blueprint
-     * @return array<int, string> The primary column names, in declaration order
+     * @param array<string, mixed> $blueprint The compiled Dto class blueprint
+     * @return list<string> The primary column names, in declaration order
      */
     private static function schemaPrimaries(array $blueprint): array
     {
@@ -778,7 +793,7 @@ class Dto implements JsonSerializable
      * the db shapes.
      *
      * @param ?string $tablename Restrict to the primaries of this table
-     * @return array<string, array> The blueprint entries, empty when none is tagged
+     * @return array<string, array<string, mixed>> The blueprint entries, keyed by property name, empty when none is tagged
      */
     private function primaryMetas(?string $tablename = null): array
     {
@@ -813,17 +828,43 @@ class Dto implements JsonSerializable
     }
 
     /**
+     * Read the name off a metadata attribute, if it carries one.
+     *
+     * FieldName, Column, Table, Label and DbCast each declare getName(), but
+     * ReflectionAttribute::newInstance() is typed object - so the lookup is done
+     * once, here, rather than narrowed at five call sites.
+     *
+     * @param array<string, ReflectionAttribute<object>> $byLowerName
+     */
+    private static function attributeName(array $byLowerName, string $key, ?string $default): ?string
+    {
+        if (!isset($byLowerName[$key])) {
+            return $default;
+        }
+
+        $instance = $byLowerName[$key]->newInstance();
+
+        return method_exists($instance, 'getName') ? $instance->getName() : $default;
+    }
+
+    /**
      * Compiles a Dto class's blueprint: reflects every public property once,
      * resolves its metadata attributes (FieldName, Column, Table, Label,
      * IsPrimary) to plain strings and reduces its rule attributes to
      * [class, args] pairs that construction can replay without reflection.
      *
      * @param string $class The concrete Dto class to compile
-     * @return array The compiled blueprint (see $blueprints)
+     * @return array<string, mixed> The compiled blueprint (see $blueprints)
      */
     private static function compile(string $class): array
     {
         $blueprint = ['primaries' => [], 'tables' => [], 'properties' => []];
+
+        // compile() is only ever reached through static::class, but nothing
+        // says so to a reader or to ReflectionClass, which wants a class-string
+        if (!class_exists($class)) {
+            throw new LogicException('cannot compile "' . $class . '": no such class');
+        }
 
         foreach (new ReflectionClass($class)->getProperties(ReflectionProperty::IS_PUBLIC) as $property) {
             // collect the DtoAttribute attributes keyed by short name — a
@@ -854,25 +895,25 @@ class Dto implements JsonSerializable
             }
 
             // resolve the metadata to plain strings, defaulting to the property name
-            $fieldName = isset($byLowerName['fieldname']) ? $byLowerName['fieldname']->newInstance()->getName() : $propertyName;
-            $column = isset($byLowerName['column']) ? $byLowerName['column']->newInstance()->getName() : $propertyName;
+            $fieldName = self::attributeName($byLowerName, 'fieldname', $propertyName);
+            $column = self::attributeName($byLowerName, 'column', $propertyName);
             // no #[Table] means the property belongs to no table in particular, so
             // asColumns() never files it under one. An empty name (a bare #[Table])
             // says as little as no attribute at all
-            $table = isset($byLowerName['table']) ? ($byLowerName['table']->newInstance()->getName() ?: null) : null;
+            $table = self::attributeName($byLowerName, 'table', null) ?: null;
 
             // the tables this class names decide whether asColumns() requires
             // a $tablename, and which ones it will answer to
             if ($table !== null && !in_array($table, $blueprint['tables'], true)) {
                 $blueprint['tables'][] = $table;
             }
-            $label = isset($byLowerName['label']) ? $byLowerName['label']->newInstance()->getName() : $propertyName;
+            $label = self::attributeName($byLowerName, 'label', $propertyName);
             $type = $property->getType();
             $typeName = $type === null ? null : (string)$type;
             $nullable = $type?->allowsNull() ?? true;
             // instantiating DbCast validates its target — a typo throws here,
             // at the class's first construction, not silently at storage time
-            $dbCast = isset($byLowerName['dbcast']) ? $byLowerName['dbcast']->newInstance()->getName() : null;
+            $dbCast = self::attributeName($byLowerName, 'dbcast', null);
 
             // every property tagged #[IsPrimary] counts: several in one table
             // make a compound key, one per table gives a multi-table Dto a key
@@ -900,8 +941,10 @@ class Dto implements JsonSerializable
                 // class) flags this as a dto-array property — nested output,
                 // no db shapes. Instantiating also verifies the class here,
                 // at first construction, not silently at input time
-                if (method_exists($ruleClass, 'getDtoClass')) {
-                    $dtoArray = $attribute->newInstance()->getDtoClass();
+                $ruleInstance = method_exists($ruleClass, 'getDtoClass') ? $attribute->newInstance() : null;
+
+                if ($ruleInstance !== null && method_exists($ruleInstance, 'getDtoClass')) {
+                    $dtoArray = $ruleInstance->getDtoClass();
                 }
             }
 

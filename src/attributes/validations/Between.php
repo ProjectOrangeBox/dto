@@ -57,6 +57,8 @@ class Between extends DtoAttribute
 
     /**
      * Supplies the bounds for the formatted error message.
+     *
+     * @return list<scalar>
      */
     #[\Override]
     protected function getMessageValues(): array

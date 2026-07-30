@@ -52,6 +52,8 @@ class MultipleOf extends DtoAttribute
 
     /**
      * Supplies the step for the formatted error message.
+     *
+     * @return list<scalar>
      */
     #[\Override]
     protected function getMessageValues(): array

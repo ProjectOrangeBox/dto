@@ -47,6 +47,8 @@ class NotEquals extends DtoAttribute
 
     /**
      * Supplies the disallowed value for the formatted error message.
+     *
+     * @return list<scalar>
      */
     #[\Override]
     protected function getMessageValues(): array

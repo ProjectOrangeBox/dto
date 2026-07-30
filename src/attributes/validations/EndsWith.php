@@ -47,6 +47,8 @@ class EndsWith extends DtoAttribute
 
     /**
      * Supplies the suffix for the formatted error message.
+     *
+     * @return list<scalar>
      */
     #[\Override]
     protected function getMessageValues(): array

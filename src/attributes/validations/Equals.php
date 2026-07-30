@@ -47,6 +47,8 @@ class Equals extends DtoAttribute
 
     /**
      * Supplies the expected value for the formatted error message.
+     *
+     * @return list<scalar>
      */
     #[\Override]
     protected function getMessageValues(): array

@@ -47,6 +47,8 @@ class LessThanEqualTo extends DtoAttribute
 
     /**
      * Supplies the comparison value for the formatted error message.
+     *
+     * @return list<scalar>
      */
     #[\Override]
     protected function getMessageValues(): array

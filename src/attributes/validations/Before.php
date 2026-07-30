@@ -50,6 +50,8 @@ class Before extends DtoAttribute
 
     /**
      * Supplies the comparison date for the formatted error message.
+     *
+     * @return list<scalar>
      */
     #[\Override]
     protected function getMessageValues(): array
