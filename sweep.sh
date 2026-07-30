@@ -19,15 +19,11 @@ checks=(
   "$BIN/phpstan analyse --memory-limit=1G"
 )
 
-# Only run the test suite when this package ships one - but check both layouts.
-# Most orange packages use unittest/runUnitTests.sh; this one has unittests/
-# (plural) driven by phpunit.xml.dist, and the runUnitTests.sh-only test meant
-# the sweep silently skipped all 200-odd tests and still reported "All checks
-# passed" - the worst possible way to be green.
+# Only run the test suite when this package ships one. The warning matters: a
+# missing runner used to mean the sweep skipped all 200-odd tests here and still
+# reported "All checks passed" - the worst possible way to be green.
 if [ -f unittest/runUnitTests.sh ]; then
   checks+=("( cd unittest && sh runUnitTests.sh )")
-elif [ -f phpunit.xml.dist ]; then
-  checks+=("$BIN/phpunit --colors=always")
 else
   echo "WARNING: no test suite found for this package - nothing will be run." >&2
 fi

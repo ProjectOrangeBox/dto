@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<phpunit bootstrap="unittests/bootstrap.php"
+<phpunit bootstrap="unittest/bootstrap.php"
          cacheResult="false"
          colors="true"
          displayDetailsOnTestsThatTriggerDeprecations="true"
@@ -11,7 +11,7 @@
          failOnWarning="true">
     <testsuites>
         <testsuite name="orange/dto">
-            <directory>unittests</directory>
+            <directory>unittest/tests</directory>
         </testsuite>
     </testsuites>
     <source>
