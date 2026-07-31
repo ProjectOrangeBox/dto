@@ -1,55 +1,55 @@
 {
-  "name": "orange/dto",
-  "description": "Attribute-driven DTOs with input validation and filtering for PHP 8.4+",
-  "type": "library",
-  "keywords": [
-    "dto",
-    "data-transfer-object",
-    "validation",
-    "filter",
-    "attributes",
-    "input"
-  ],
-  "homepage": "https://github.com/ProjectOrangeBox/dto",
-  "license": "MIT",
-  "authors": [
-    {
-      "name": "Don Myers",
-      "email": "donmyers@me.com"
+    "name": "orange/dto",
+    "description": "Attribute-driven DTOs with input validation and filtering for PHP 8.4+",
+    "type": "library",
+    "keywords": [
+        "dto",
+        "data-transfer-object",
+        "validation",
+        "filter",
+        "attributes",
+        "input"
+    ],
+    "homepage": "https://github.com/ProjectOrangeBox/dto",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Don Myers",
+            "email": "donmyers@me.com"
+        }
+    ],
+    "support": {
+        "issues": "https://github.com/ProjectOrangeBox/dto/issues",
+        "source": "https://github.com/ProjectOrangeBox/dto"
+    },
+    "require": {
+        "php": ">=8.4",
+        "ext-filter": "*",
+        "ext-iconv": "*",
+        "ext-json": "*",
+        "ext-mbstring": "*"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^13.2",
+        "orange/testkit": "dev-master"
+    },
+    "suggest": {
+        "ext-intl": "Accurate ASCII transliteration for the Transliterate filter (falls back to iconv)"
+    },
+    "autoload": {
+        "psr-4": {
+            "orange\\dto\\": "src/"
+        }
+    },
+    "scripts": {
+        "test": "phpunit",
+        "test-coverage": "phpunit --coverage-text"
+    },
+    "scripts-descriptions": {
+        "test": "Run the PHPUnit test suite",
+        "test-coverage": "Run the test suite with a text coverage report (requires Xdebug or PCOV)"
+    },
+    "config": {
+        "sort-packages": true
     }
-  ],
-  "support": {
-    "issues": "https://github.com/ProjectOrangeBox/dto/issues",
-    "source": "https://github.com/ProjectOrangeBox/dto"
-  },
-  "require": {
-    "php": ">=8.4",
-    "ext-filter": "*",
-    "ext-iconv": "*",
-    "ext-json": "*",
-    "ext-mbstring": "*"
-  },
-  "require-dev": {
-    "phpunit/phpunit": "^10.5 || ^11.0",
-    "orange/testkit": "dev-master"
-  },
-  "suggest": {
-    "ext-intl": "Accurate ASCII transliteration for the Transliterate filter (falls back to iconv)"
-  },
-  "autoload": {
-    "psr-4": {
-      "orange\\dto\\": "src/"
-    }
-  },
-  "scripts": {
-    "test": "phpunit",
-    "test-coverage": "phpunit --coverage-text"
-  },
-  "scripts-descriptions": {
-    "test": "Run the PHPUnit test suite",
-    "test-coverage": "Run the test suite with a text coverage report (requires Xdebug or PCOV)"
-  },
-  "config": {
-    "sort-packages": true
-  }
 }
